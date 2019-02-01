@@ -4,13 +4,14 @@ import unittest
 
 import six
 
-from fluent.runtime import FluentBundle
 from fluent.runtime.errors import FluentReferenceError
 from fluent.runtime.types import FluentNone, fluent_number
 
+from .. import all_fluent_bundle_implementations
 from ..utils import dedent_ftl
 
 
+@all_fluent_bundle_implementations
 class TestFunctionCalls(unittest.TestCase):
 
     def setUp(self):
@@ -40,7 +41,7 @@ class TestFunctionCalls(unittest.TestCase):
 
         RESTRICTED.ftl_arg_spec = (0, ['allowed'])
 
-        self.ctx = FluentBundle(
+        self.ctx = self.fluent_bundle_cls(
             ['en-US'], use_isolating=False,
             functions={'IDENTITY': IDENTITY,
                        'WITH_KEYWORD': WITH_KEYWORD,
@@ -158,7 +159,6 @@ class TestFunctionCalls(unittest.TestCase):
             self.ctx.format('bad-output')
         self.assertIn("Unsupported", cm.exception.args[0])
 
-    @unittest.expectedFailure
     def test_bad_output_2(self):
         # This is a developer error, so should raise an exception
         with self.assertRaises(TypeError) as cm:
@@ -171,10 +171,11 @@ class TestFunctionCalls(unittest.TestCase):
         self.assertEqual(len(errs), 0)
 
 
+@all_fluent_bundle_implementations
 class TestMissing(unittest.TestCase):
 
     def setUp(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=False)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
         self.ctx.add_messages(dedent_ftl("""
             missing = { MISSING(1) }
         """))
@@ -186,6 +187,7 @@ class TestMissing(unittest.TestCase):
                          [FluentReferenceError("Unknown function: MISSING")])
 
 
+@all_fluent_bundle_implementations
 class TestResolving(unittest.TestCase):
 
     def setUp(self):
@@ -195,7 +197,7 @@ class TestResolving(unittest.TestCase):
             self.args_passed.append(number)
             return number
 
-        self.ctx = FluentBundle(
+        self.ctx = self.fluent_bundle_cls(
             ['en-US'], use_isolating=False,
             functions={'NUMBER_PROCESSOR':
                        number_processor})
@@ -220,6 +222,7 @@ class TestResolving(unittest.TestCase):
         self.assertEqual(self.args_passed, [fluent_number(1)])
 
 
+@all_fluent_bundle_implementations
 class TestKeywordArgs(unittest.TestCase):
 
     def setUp(self):
@@ -229,7 +232,7 @@ class TestKeywordArgs(unittest.TestCase):
             self.args_passed.append((arg, kwarg1, kwarg2))
             return arg
 
-        self.ctx = FluentBundle(
+        self.ctx = self.fluent_bundle_cls(
             ['en-US'], use_isolating=False,
             functions={'MYFUNC': my_function})
         self.ctx.add_messages(dedent_ftl("""

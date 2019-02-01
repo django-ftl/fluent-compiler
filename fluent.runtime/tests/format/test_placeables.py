@@ -2,15 +2,16 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-from fluent.runtime import FluentBundle
 from fluent.runtime.errors import FluentCyclicReferenceError, FluentReferenceError
 
+from .. import all_fluent_bundle_implementations
 from ..utils import dedent_ftl
 
 
+@all_fluent_bundle_implementations
 class TestPlaceables(unittest.TestCase):
     def setUp(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=False)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
         self.ctx.add_messages(dedent_ftl("""
             message = Message
                     .attr = Message Attribute
@@ -39,6 +40,8 @@ class TestPlaceables(unittest.TestCase):
                                   .attr = Attribute
             self-parent-ref-ok = Parent
                                .attr =  Attribute { self-parent-ref-ok }
+            -cyclic-term = { -cyclic-term }
+            cyclic-term-message = { -cyclic-term }
         """))
 
     def test_placeable_message(self):
@@ -82,19 +85,21 @@ class TestPlaceables(unittest.TestCase):
 
     def test_cycle_detection(self):
         val, errs = self.ctx.format('self-referencing-message', {})
-        self.assertEqual(val, 'Text ???')
+        self.assertIn('???', val)
         self.assertEqual(len(errs), 1)
-        self.assertEqual(
-            errs,
-            [FluentCyclicReferenceError("Cyclic reference")])
+        self.assertEqual(type(errs[0]), FluentCyclicReferenceError)
 
     def test_mutual_cycle_detection(self):
         val, errs = self.ctx.format('cyclic-msg1', {})
-        self.assertEqual(val, 'Text1 Text2 ???')
+        self.assertIn('???', val)
         self.assertEqual(len(errs), 1)
-        self.assertEqual(
-            errs,
-            [FluentCyclicReferenceError("Cyclic reference")])
+        self.assertEqual(type(errs[0]), FluentCyclicReferenceError)
+
+    def test_term_cycle_detection(self):
+        val, errs = self.ctx.format('cyclic-term-message', {})
+        self.assertIn('???', val)
+        self.assertEqual(len(errs), 1)
+        self.assertEqual(type(errs[0]), FluentCyclicReferenceError)
 
     def test_allowed_self_reference(self):
         val, errs = self.ctx.format('self-attribute-ref-ok', {})
@@ -105,44 +110,45 @@ class TestPlaceables(unittest.TestCase):
         self.assertEqual(len(errs), 0)
 
 
+@all_fluent_bundle_implementations
 class TestSingleElementPattern(unittest.TestCase):
     def test_single_literal_number_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=True)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=True)
         self.ctx.add_messages('foo = { 1 }')
         val, errs = self.ctx.format('foo')
         self.assertEqual(val, '1')
         self.assertEqual(errs, [])
 
     def test_single_literal_number_non_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=False)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
         self.ctx.add_messages('foo = { 1 }')
         val, errs = self.ctx.format('foo')
         self.assertEqual(val, '1')
         self.assertEqual(errs, [])
 
     def test_single_arg_number_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=True)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=True)
         self.ctx.add_messages('foo = { $arg }')
         val, errs = self.ctx.format('foo', {'arg': 1})
         self.assertEqual(val, '1')
         self.assertEqual(errs, [])
 
     def test_single_arg_number_non_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=False)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
         self.ctx.add_messages('foo = { $arg }')
         val, errs = self.ctx.format('foo', {'arg': 1})
         self.assertEqual(val, '1')
         self.assertEqual(errs, [])
 
     def test_single_arg_missing_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=True)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=True)
         self.ctx.add_messages('foo = { $arg }')
         val, errs = self.ctx.format('foo')
         self.assertEqual(val, 'arg')
         self.assertEqual(len(errs), 1)
 
     def test_single_arg_missing_non_isolating(self):
-        self.ctx = FluentBundle(['en-US'], use_isolating=False)
+        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
         self.ctx.add_messages('foo = { $arg }')
         val, errs = self.ctx.format('foo')
         self.assertEqual(val, 'arg')

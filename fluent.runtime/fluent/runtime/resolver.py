@@ -196,7 +196,7 @@ class FluentNoneResolver(FluentNone, BaseResolver):
 
 def lookup_reference(ref, env):
     """
-    Given a MessageReference, TermReference or AttributeExpression, returns the
+    Given a MessageReference or TermReference, returns the
     AST node, or FluentNone if not found, including fallback logic
     """
     ref_id = reference_to_id(ref)

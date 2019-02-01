@@ -7,6 +7,7 @@ import sys
 from datetime import date, datetime
 from decimal import Decimal
 
+import six
 from fluent.syntax.ast import Term, TermReference
 
 from .errors import FluentFormatError, FluentReferenceError
@@ -43,6 +44,13 @@ def ast_to_id(ast):
     if isinstance(ast, Term):
         return TERM_SIGIL + ast.id.name
     return ast.id.name
+
+
+def attribute_ast_to_id(attribute, parent_ast):
+    """
+    Returns a string reference for an Attribute, given Attribute and parent Term or Message
+    """
+    return ''.join([ast_to_id(parent_ast), ATTRIBUTE_SEPARATOR,  attribute.id.name])
 
 
 if sys.version_info < (3,):

@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 from setuptools import setup
 
+import sys
+if sys.version_info < (3, 4):
+    old_python_requires = ['singledispatch>=3.4']
+else:
+    # functools.singledispatch is in stdlib from Python 3.4 onwards.
+    old_python_requires = []
+
+tests_requires = ['ast_decompiler>=0.3.2', 'hypothesis>=4.9.0']
 
 setup(name='fluent.runtime',
       version='0.1',
@@ -26,6 +34,10 @@ setup(name='fluent.runtime',
           'babel',
           'pytz',
           'six',
-      ],
+      ] + old_python_requires,
       test_suite='tests',
+      tests_require=tests_requires,  # for 'setup.py test'
+      extras_require={
+          'develop': tests_requires,  # for 'pip install fluent.runtime[develop]'
+      },
       )
