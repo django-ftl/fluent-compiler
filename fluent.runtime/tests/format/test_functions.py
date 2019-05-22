@@ -68,7 +68,8 @@ class TestFunctionCalls(unittest.TestCase):
             use-any-args       = { ANY_ARGS(1, 2, 3, x:1) }
             use-restricted-ok  = { RESTRICTED(allowed: 1) }
             use-restricted-bad = { RESTRICTED(notAllowed: 1) }
-            bad-output         = { BAD_OUTPUT() }
+            bad-output         = { BAD_OUTPUT() } stuff
+            bad-output-2       = { BAD_OUTPUT() }
             non-identfier-arg  = { ANY_ARGS(1, foo: 2, non-identifier: 3) }
         """))
 
@@ -155,6 +156,13 @@ class TestFunctionCalls(unittest.TestCase):
         # This is a developer error, so should raise an exception
         with self.assertRaises(TypeError) as cm:
             self.ctx.format('bad-output')
+        self.assertIn("Unsupported", cm.exception.args[0])
+
+    @unittest.expectedFailure
+    def test_bad_output_2(self):
+        # This is a developer error, so should raise an exception
+        with self.assertRaises(TypeError) as cm:
+            self.ctx.format('bad-output-2')
         self.assertIn("Unsupported", cm.exception.args[0])
 
     def test_non_identifier_python_keyword_args(self):

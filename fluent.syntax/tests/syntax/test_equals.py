@@ -55,7 +55,7 @@ class TestEntryEqualToSelf(unittest.TestCase):
 
     def test_same_message_with_attribute(self):
         message1 = self.parse_ftl_entry("""\
-            foo
+            foo =
                 .attr = Attr
         """)
 
@@ -65,7 +65,7 @@ class TestEntryEqualToSelf(unittest.TestCase):
 
     def test_same_message_with_attributes(self):
         message1 = self.parse_ftl_entry("""\
-            foo
+            foo =
                 .attr1 = Attr 1
                 .attr2 = Attr 2
         """)
@@ -84,7 +84,7 @@ class TestEntryEqualToSelf(unittest.TestCase):
         self.assertTrue(message1.equals(message1.clone()))
 
 
-class TestOrderEquals(unittest.TestCase):
+class TestNonEquals(unittest.TestCase):
     def setUp(self):
         self.parser = FluentParser()
 
@@ -93,18 +93,17 @@ class TestOrderEquals(unittest.TestCase):
 
     def test_attributes(self):
         message1 = self.parse_ftl_entry("""\
-            foo
+            foo =
                 .attr1 = Attr1
                 .attr2 = Attr2
         """)
         message2 = self.parse_ftl_entry("""\
-            foo
+            foo =
                 .attr2 = Attr2
                 .attr1 = Attr1
         """)
 
-        self.assertTrue(message1.equals(message2))
-        self.assertTrue(message2.equals(message1))
+        self.assertFalse(message1.equals(message2))
 
     def test_variants(self):
         message1 = self.parse_ftl_entry("""\
@@ -122,8 +121,7 @@ class TestOrderEquals(unittest.TestCase):
                 }
         """)
 
-        self.assertTrue(message1.equals(message2))
-        self.assertTrue(message2.equals(message1))
+        self.assertFalse(message1.equals(message2))
 
     def test_variants_with_numbers(self):
         message1 = self.parse_ftl_entry("""\
@@ -141,8 +139,7 @@ class TestOrderEquals(unittest.TestCase):
                 }
         """)
 
-        self.assertTrue(message1.equals(message2))
-        self.assertTrue(message2.equals(message1))
+        self.assertFalse(message1.equals(message2))
 
 
 class TestEqualWithSpans(unittest.TestCase):

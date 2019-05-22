@@ -51,7 +51,8 @@ class CurrentEnvironment(object):
 class ResolverEnvironment(object):
     context = attr.ib()
     errors = attr.ib()
-    part_count = attr.ib(default=0)
+    part_count = attr.ib(default=0, init=False)
+    active_patterns = attr.ib(factory=set, init=False)
     current = attr.ib(factory=CurrentEnvironment)
 
     @contextlib.contextmanager
@@ -103,15 +104,14 @@ class Pattern(FTL.Pattern, BaseResolver):
 
     def __init__(self, *args, **kwargs):
         super(Pattern, self).__init__(*args, **kwargs)
-        self.dirty = False
 
     def __call__(self, env):
-        if self.dirty:
+        if self in env.active_patterns:
             env.errors.append(FluentCyclicReferenceError("Cyclic reference"))
             return FluentNone()
         if env.part_count > self.MAX_PARTS:
             return ""
-        self.dirty = True
+        env.active_patterns.add(self)
         elements = self.elements
         remaining_parts = self.MAX_PARTS - env.part_count
         if len(self.elements) > remaining_parts:
@@ -122,7 +122,7 @@ class Pattern(FTL.Pattern, BaseResolver):
             resolve(element(env), env) for element in elements
         )
         env.part_count += len(elements)
-        self.dirty = False
+        env.active_patterns.remove(self)
         return retval
 
 
@@ -142,18 +142,21 @@ class TextElement(FTL.TextElement, Literal):
 
 class Placeable(FTL.Placeable, BaseResolver):
     def __call__(self, env):
-        return self.expression(env)
+        inner = resolve(self.expression(env), env)
+        if not env.context.use_isolating:
+            return inner
+        return "\u2068" + inner + "\u2069"
 
 
-class IsolatingPlaceable(FTL.Placeable, BaseResolver):
+class NeverIsolatingPlaceable(FTL.Placeable, BaseResolver):
     def __call__(self, env):
-        inner = self.expression(env)
-        return "\u2068" + resolve(inner, env) + "\u2069"
+        inner = resolve(self.expression(env), env)
+        return inner
 
 
 class StringLiteral(FTL.StringLiteral, Literal):
     def __call__(self, env):
-        return self.value
+        return self.parse()['value']
 
 
 class NumberLiteral(FTL.NumberLiteral, BaseResolver):
@@ -175,7 +178,14 @@ class MessageReference(FTL.MessageReference, BaseResolver):
 
 class TermReference(FTL.TermReference, BaseResolver):
     def __call__(self, env):
-        with env.modified_for_term_reference():
+        if self.arguments:
+            if self.arguments.positional:
+                env.errors.append(FluentFormatError("Ignored positional arguments passed to term '{0}'"
+                                                    .format(reference_to_id(self))))
+            kwargs = {kwarg.name.name: kwarg.value(env) for kwarg in self.arguments.named}
+        else:
+            kwargs = None
+        with env.modified_for_term_reference(args=kwargs):
             return lookup_reference(self, env)(env)
 
 
@@ -195,9 +205,9 @@ def lookup_reference(ref, env):
     except LookupError:
         env.errors.append(unknown_reference_error_obj(ref_id))
 
-        if isinstance(ref, AttributeExpression):
+        if ref.attribute:
             # Fallback
-            parent_id = reference_to_id(ref.ref)
+            parent_id = reference_to_id(ref, ignore_attributes=True)
             try:
                 return env.context.lookup(parent_id)
             except LookupError:
@@ -226,38 +236,8 @@ class VariableReference(FTL.VariableReference, BaseResolver):
         return FluentNone(name)
 
 
-class AttributeExpression(FTL.AttributeExpression, BaseResolver):
-    def __call__(self, env):
-        return lookup_reference(self, env)(env)
-
-
 class Attribute(FTL.Attribute, BaseResolver):
     pass
-
-
-class VariantList(FTL.VariantList, BaseResolver):
-    def __call__(self, env, key=None):
-        found = None
-        for variant in self.variants:
-            if variant.default:
-                default = variant
-                if key is None:
-                    # We only want the default
-                    break
-
-            compare_value = variant.key(env)
-            if match(key, compare_value, env):
-                found = variant
-                break
-
-        if found is None:
-            if (key is not None and not isinstance(key, FluentNone)):
-                env.errors.append(FluentReferenceError("Unknown variant: {0}"
-                                                       .format(key)))
-            found = default
-        assert found, "Not having a default variant is a parse error"
-
-        return found.value(env)
 
 
 class SelectExpression(FTL.SelectExpression, BaseResolver):
@@ -309,33 +289,15 @@ class Identifier(FTL.Identifier, BaseResolver):
         return self.name
 
 
-class VariantExpression(FTL.VariantExpression, BaseResolver):
+class CallArguments(FTL.CallArguments, BaseResolver):
+    pass
+
+
+class FunctionReference(FTL.FunctionReference, BaseResolver):
     def __call__(self, env):
-        message = lookup_reference(self.ref, env)
-
-        # TODO What to do if message is not a VariantList?
-        # Need test at least.
-        assert isinstance(message, VariantList)
-
-        variant_name = self.key.name
-        return message(env, variant_name)
-
-
-class CallExpression(FTL.CallExpression, BaseResolver):
-    def __call__(self, env):
-        args = [arg(env) for arg in self.positional]
-        kwargs = {kwarg.name.name: kwarg.value(env) for kwarg in self.named}
-
-        if isinstance(self.callee, (TermReference, AttributeExpression)):
-            term = lookup_reference(self.callee, env)
-            if args:
-                env.errors.append(FluentFormatError("Ignored positional arguments passed to term '{0}'"
-                                                    .format(reference_to_id(self.callee))))
-            with env.modified_for_term_reference(args=kwargs):
-                return term(env)
-
-        # builtin or custom function call
-        function_name = self.callee.id.name
+        args = [arg(env) for arg in self.arguments.positional]
+        kwargs = {kwarg.name.name: kwarg.value(env) for kwarg in self.arguments.named}
+        function_name = self.id.name
         try:
             function = env.context._functions[function_name]
         except LookupError:

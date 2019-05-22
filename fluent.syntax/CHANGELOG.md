@@ -1,5 +1,70 @@
 # Changelog
 
+## fluent.syntax 0.15.0 (April 17, 2019)
+
+  - Support Fluent Syntax 1.0.
+
+    Fluent Syntax 1.0 has been published today. There are no changes to the
+    grammar nor the AST compared to the Syntax 0.9.
+
+## fluent.syntax 0.14.0 (March 26, 2019)
+
+This release of `fluent.syntax` brings support for version 0.9 of the Fluent
+Syntax spec. The API remains unchanged. Files written in valid Syntax 0.8 may
+parse differently in this release. See the compatibility note below. Consult
+the full Syntax 0.9 [changelog][chlog0.9] for details.
+
+[chlog0.9]: https://github.com/projectfluent/fluent/releases/tag/v0.9.0
+
+  - Flatten complex reference expressions.
+
+    Reference expressions which may take complex forms, such as a reference
+    to a message's attribute, or a parameterized reference to an attribute of
+    a term, are now stored in a simplified manner. Instead of nesting
+    multiple expression nodes (e.g. `CallExpression` of an
+    `AttributeExpression` of a `TermReference`), all information is available
+    directly in the reference expression.
+
+    This change affects the following AST nodes:
+
+    -  `MessageReference` now has an optional `attribute` field,
+    - `FunctionReference` now has a required `arguments` field,
+    - `TermReference` now has an optional `attribute` field and an optional
+      `arguments` field.
+
+  - Remove `VariantLists`.
+
+    The `VariantLists` and the `VariantExpression` syntax and AST nodes were
+    deprecated in Syntax 0.9 and have now been removed.
+
+  - Rename `StringLiteral.raw` to `value`.
+
+    `StringLiteral.value` contains the exact contents of the string literal,
+    character-for-character. Escape sequences are stored verbatim without
+    processing. A new method, `Literal.parse`, can be used to process the raw
+    value of the literal into an unescaped form.
+
+  - Rename `args` to `arguments`.
+
+    The `args` field of `MessageReference`, `TermReference`,
+    `FunctionReference`, and `Annotation` has been renamed to `arguments`.
+
+
+## fluent.syntax 0.13.0 (March 25, 2019)
+
+- Make `BaseNode.equals` stricter when comparing lists.
+
+  Starting from this version, `BaseNode.equals` now takes the order of
+  variants and attributes into account when comparing two nodes.
+
+- Remove `FluentSerializer.serialize_expression`.
+
+  The stateless equivalent can still be imported from `fluent.syntax.serializer`:
+
+  ```python
+  from fluent.syntax.serializer import serialize_expression
+  ```
+
 ## fluent.syntax 0.12.0 (February 15, 2019)
 
 - Fixes to the `Visitor` API

@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(name='fluent.syntax',
-      version='0.12.0',
+      version='0.15.0',
       description='Localization library for expressive translations.',
       long_description='See https://github.com/projectfluent/python-fluent/ for more info.',
       author='Mozilla',
@@ -18,6 +18,7 @@ setup(name='fluent.syntax',
           'Programming Language :: Python :: 3.5',
       ],
       packages=['fluent', 'fluent.syntax'],
+      # These should also be duplicated in tox.ini and ../.travis.yml
       tests_require=['six'],
       test_suite='tests.syntax'
 )

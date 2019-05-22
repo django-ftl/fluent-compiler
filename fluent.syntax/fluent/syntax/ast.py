@@ -1,6 +1,9 @@
+# coding=utf-8
 from __future__ import unicode_literals
+import re
 import sys
 import json
+import six
 
 
 class Visitor(object):
@@ -183,13 +186,6 @@ class BaseNode(object):
                 if len(field1) != len(field2):
                     return False
 
-                # Sort elements of order-agnostic fields to ensure the
-                # comparison is order-agnostic as well. Annotations should be
-                # here too but they don't have sorting keys.
-                if key in ('attributes', 'variants'):
-                    field1 = sorted(field1, key=lambda elem: elem.sorting_key)
-                    field2 = sorted(field2, key=lambda elem: elem.sorting_key)
-
                 for elem1, elem2 in zip(field1, field2):
                     if not scalars_equal(elem1, elem2, ignored_fields):
                         return False
@@ -254,12 +250,6 @@ class Term(Entry):
         self.comment = comment
 
 
-class VariantList(SyntaxNode):
-    def __init__(self, variants, **kwargs):
-        super(VariantList, self).__init__(**kwargs)
-        self.variants = variants
-
-
 class Pattern(SyntaxNode):
     def __init__(self, elements, **kwargs):
         super(Pattern, self).__init__(**kwargs)
@@ -286,29 +276,64 @@ class Expression(SyntaxNode):
     """An abstract base class for expressions."""
 
 
-class StringLiteral(Expression):
-    def __init__(self, raw, value, **kwargs):
-        super(StringLiteral, self).__init__(**kwargs)
-        self.raw = raw
-        self.value = value
-
-
-class NumberLiteral(Expression):
+class Literal(Expression):
+    """An abstract base class for literals."""
     def __init__(self, value, **kwargs):
-        super(NumberLiteral, self).__init__(**kwargs)
+        super(Literal, self).__init__(**kwargs)
         self.value = value
+
+    def parse(self):
+        return {'value': self.value}
+
+
+class StringLiteral(Literal):
+    def parse(self):
+        def from_escape_sequence(matchobj):
+            c, codepoint4, codepoint6 = matchobj.groups()
+            if c:
+                return c
+            codepoint = int(codepoint4 or codepoint6, 16)
+            if codepoint <= 0xD7FF or 0xE000 <= codepoint:
+                return six.unichr(codepoint)
+            # Escape sequences reresenting surrogate code points are
+            # well-formed but invalid in Fluent. Replace them with U+FFFD
+            # REPLACEMENT CHARACTER.
+            return '�'
+
+        value = re.sub(
+            r'\\(?:(\\|")|u([0-9a-fA-F]{4})|U([0-9a-fA-F]{6}))',
+            from_escape_sequence,
+            self.value
+        )
+        return {'value': value}
+
+
+class NumberLiteral(Literal):
+    def parse(self):
+        value = float(self.value)
+        decimal_position = self.value.find('.')
+        precision = 0
+        if decimal_position >= 0:
+            precision = len(self.value) - decimal_position - 1
+        return {
+            'value': value,
+            'precision': precision
+        }
 
 
 class MessageReference(Expression):
-    def __init__(self, id, **kwargs):
+    def __init__(self, id, attribute=None, **kwargs):
         super(MessageReference, self).__init__(**kwargs)
         self.id = id
+        self.attribute = attribute
 
 
 class TermReference(Expression):
-    def __init__(self, id, **kwargs):
+    def __init__(self, id, attribute=None, arguments=None, **kwargs):
         super(TermReference, self).__init__(**kwargs)
         self.id = id
+        self.attribute = attribute
+        self.arguments = arguments
 
 
 class VariableReference(Expression):
@@ -318,9 +343,10 @@ class VariableReference(Expression):
 
 
 class FunctionReference(Expression):
-    def __init__(self, id, **kwargs):
+    def __init__(self, id, arguments, **kwargs):
         super(FunctionReference, self).__init__(**kwargs)
         self.id = id
+        self.arguments = arguments
 
 
 class SelectExpression(Expression):
@@ -330,26 +356,11 @@ class SelectExpression(Expression):
         self.variants = variants
 
 
-class AttributeExpression(Expression):
-    def __init__(self, ref, name, **kwargs):
-        super(AttributeExpression, self).__init__(**kwargs)
-        self.ref = ref
-        self.name = name
-
-
-class VariantExpression(Expression):
-    def __init__(self, ref, key, **kwargs):
-        super(VariantExpression, self).__init__(**kwargs)
-        self.ref = ref
-        self.key = key
-
-
-class CallExpression(Expression):
-    def __init__(self, callee, positional=None, named=None, **kwargs):
-        super(CallExpression, self).__init__(**kwargs)
-        self.callee = callee
-        self.positional = positional or []
-        self.named = named or []
+class CallArguments(SyntaxNode):
+    def __init__(self, positional=None, named=None, **kwargs):
+        super(CallArguments, self).__init__(**kwargs)
+        self.positional = [] if positional is None else positional
+        self.named = [] if named is None else named
 
 
 class Attribute(SyntaxNode):
@@ -358,10 +369,6 @@ class Attribute(SyntaxNode):
         self.id = id
         self.value = value
 
-    @property
-    def sorting_key(self):
-        return self.id.name
-
 
 class Variant(SyntaxNode):
     def __init__(self, key, value, default=False, **kwargs):
@@ -369,12 +376,6 @@ class Variant(SyntaxNode):
         self.key = key
         self.value = value
         self.default = default
-
-    @property
-    def sorting_key(self):
-        if isinstance(self.key, NumberLiteral):
-            return self.key.value
-        return self.key.name
 
 
 class NamedArgument(SyntaxNode):
@@ -429,8 +430,8 @@ class Span(BaseNode):
 
 
 class Annotation(SyntaxNode):
-    def __init__(self, code, args=None, message=None, **kwargs):
+    def __init__(self, code, arguments=None, message=None, **kwargs):
         super(Annotation, self).__init__(**kwargs)
         self.code = code
-        self.args = args or []
+        self.arguments = arguments or []
         self.message = message

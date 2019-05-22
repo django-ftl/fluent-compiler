@@ -6,6 +6,7 @@ sys.path.append('.')
 
 from tests.syntax import dedent_ftl
 from fluent.syntax import FluentParser, FluentSerializer
+from fluent.syntax.serializer import serialize_expression, serialize_variant_key
 
 
 class TestSerializeResource(unittest.TestCase):
@@ -94,12 +95,6 @@ class TestSerializeResource(unittest.TestCase):
         """
         self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
 
-    def test_variant_expression(self):
-        input = """\
-            foo = Foo { -bar[baz] }
-        """
-        self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
-
     def test_attribute_expression(self):
         input = """\
             foo = Foo { bar.baz }
@@ -154,17 +149,6 @@ class TestSerializeResource(unittest.TestCase):
         """
         self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
 
-    def test_attribute_syntax_zero_four(self):
-        input = """\
-            foo
-                .attr = Foo Attr
-        """
-        output = """\
-            foo =
-                .attr = Foo Attr
-        """
-        self.assertEqual(self.pretty_ftl(input), dedent_ftl(output))
-
     def test_attribute(self):
         input = """\
             foo =
@@ -180,19 +164,6 @@ class TestSerializeResource(unittest.TestCase):
                     Continued
         """
         self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
-
-    def test_two_attributes_syntax_zero_four(self):
-        input = """\
-            foo
-                .attr-a = Foo Attr A
-                .attr-b = Foo Attr B
-        """
-        output = """\
-            foo =
-                .attr-a = Foo Attr A
-                .attr-b = Foo Attr B
-        """
-        self.assertEqual(self.pretty_ftl(input), dedent_ftl(output))
 
     def test_two_attributes(self):
         input = """\
@@ -217,16 +188,6 @@ class TestSerializeResource(unittest.TestCase):
                 Continued
                 .attr-a = Foo Attr A
                 .attr-b = Foo Attr B
-        """
-        self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
-
-    def test_variant_list(self):
-        input = """\
-            -foo =
-                {
-                   *[a] A
-                    [b] B
-                }
         """
         self.assertEqual(self.pretty_ftl(input), dedent_ftl(input))
 
@@ -458,19 +419,16 @@ class TestSerializeExpression(unittest.TestCase):
     @staticmethod
     def pretty_expr(text):
         parser = FluentParser()
-        serializer = FluentSerializer(with_junk=False)
         entry = parser.parse_entry(dedent_ftl(text))
         expr = entry.value.elements[0].expression
-        return serializer.serialize_expression(expr)
+        return serialize_expression(expr)
 
     def test_invalid_expression(self):
-        serializer = FluentSerializer()
+        with self.assertRaisesRegexp(Exception, 'Unknown expression type'):
+            serialize_expression(None)
 
         with self.assertRaisesRegexp(Exception, 'Unknown expression type'):
-            serializer.serialize_expression(None)
-
-        with self.assertRaisesRegexp(Exception, 'Unknown expression type'):
-            serializer.serialize_expression(object())
+            serialize_expression(object())
 
     def test_string_expression(self):
         input = """\
@@ -502,12 +460,6 @@ class TestSerializeExpression(unittest.TestCase):
         """
         self.assertEqual(self.pretty_expr(input), 'msg.attr')
 
-    def test_variant_expression(self):
-        input = """\
-            foo = { -msg[variant] }
-        """
-        self.assertEqual(self.pretty_expr(input), '-msg[variant]')
-
     def test_call_expression(self):
         input = """\
             foo = { BUILTIN(3.14, kwarg: "value") }
@@ -522,3 +474,43 @@ class TestSerializeExpression(unittest.TestCase):
                 }
         """
         self.assertEqual(self.pretty_expr(input), '$num ->\n   *[one] One\n')
+
+
+class TestSerializeVariantKey(unittest.TestCase):
+    @staticmethod
+    def pretty_variant_key(text, index):
+        parser = FluentParser()
+        entry = parser.parse_entry(dedent_ftl(text))
+        variants = entry.value.elements[0].expression.variants
+        return serialize_variant_key(variants[index].key)
+
+    def test_invalid_expression(self):
+        with self.assertRaisesRegexp(Exception, 'Unknown variant key type'):
+            serialize_variant_key(None)
+
+        with self.assertRaisesRegexp(Exception, 'Unknown variant key type'):
+            serialize_variant_key(object())
+
+    def test_identifiers(self):
+        input = """\
+            foo = { $num ->
+                [one] One
+               *[other] Other
+            }
+        """
+        self.assertEqual(self.pretty_variant_key(input, 0), 'one')
+        self.assertEqual(self.pretty_variant_key(input, 1), 'other')
+
+    def test_number_literals(self):
+        input = """\
+            foo = { $num ->
+                [-123456789] Minus a lot
+                [0] Zero
+               *[3.14] Pi
+                [007] James
+            }
+        """
+        self.assertEqual(self.pretty_variant_key(input, 0), '-123456789')
+        self.assertEqual(self.pretty_variant_key(input, 1), '0')
+        self.assertEqual(self.pretty_variant_key(input, 2), '3.14')
+        self.assertEqual(self.pretty_variant_key(input, 3), '007')

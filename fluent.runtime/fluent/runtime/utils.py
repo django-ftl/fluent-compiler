@@ -7,9 +7,7 @@ import sys
 from datetime import date, datetime
 from decimal import Decimal
 
-import six
-
-from fluent.syntax.ast import AttributeExpression, Term, TermReference
+from fluent.syntax.ast import Term, TermReference
 
 from .errors import FluentFormatError, FluentReferenceError
 from .types import FluentDate, FluentDateTime, FluentDecimal, FluentFloat, FluentInt
@@ -209,9 +207,9 @@ def args_match(function_name, args, kwargs, arg_spec):
     return (match, sanitized_args, sanitized_kwargs, errors)
 
 
-def reference_to_id(ref):
+def reference_to_id(ref, ignore_attributes=False):
     """
-    Returns a string reference for a MessageReference, TermReference or AttributeExpression
+    Returns a string reference for a MessageReference or TermReference
     AST node.
 
     e.g.
@@ -220,12 +218,14 @@ def reference_to_id(ref):
        -term
        -term.attr
     """
-    if isinstance(ref, AttributeExpression):
-        return _make_attr_id(reference_to_id(ref.ref),
-                             ref.name.name)
     if isinstance(ref, TermReference):
-        return TERM_SIGIL + ref.id.name
-    return ref.id.name
+        start = TERM_SIGIL + ref.id.name
+    else:
+        start = ref.id.name
+
+    if not ignore_attributes and ref.attribute:
+        return ''.join([start, ATTRIBUTE_SEPARATOR, ref.attribute.name])
+    return start
 
 
 def sanitize_function_args(arg_spec, name, errors):
@@ -252,10 +252,3 @@ def unknown_reference_error_obj(ref_id):
     if ref_id.startswith(TERM_SIGIL):
         return FluentReferenceError("Unknown term: {0}".format(ref_id))
     return FluentReferenceError("Unknown message: {0}".format(ref_id))
-
-
-def _make_attr_id(parent_ref_id, attr_name):
-    """
-    Given a parent id and the attribute name, return the attribute id
-    """
-    return ''.join([parent_ref_id, ATTRIBUTE_SEPARATOR, attr_name])

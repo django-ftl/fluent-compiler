@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from setuptools import setup
-import sys
+
 
 setup(name='fluent.runtime',
       version='0.1',
@@ -19,12 +19,13 @@ setup(name='fluent.runtime',
           'Programming Language :: Python :: 3.5',
       ],
       packages=['fluent', 'fluent.runtime'],
+      # These should also be duplicated in tox.ini and ../.travis.yml
       install_requires=[
-          'fluent.syntax>=0.12,<=0.13',
+          'fluent.syntax>=0.14,<=0.16',
           'attrs',
           'babel',
           'pytz',
+          'six',
       ],
-      tests_require=['six'],
-      test_suite='tests'
+      test_suite='tests',
       )
