@@ -443,6 +443,7 @@ class TestCodeGen(unittest.TestCase):
     def test_if_empty(self):
         scope = codegen.Module()
         if_statement = codegen.If(scope)
+        if_statement = if_statement.finalize()
         self.assertCodeEqual(as_source_code(if_statement), "")
 
     def test_if_one_if(self):
@@ -486,7 +487,7 @@ class TestCodeGen(unittest.TestCase):
         scope = codegen.Module()
         if_statement = codegen.If(scope)
         if_statement.else_block.add_return(codegen.Number(3))
-        if_statement = codegen.simplify(if_statement)
+        if_statement = if_statement.finalize()
         self.assertCodeEqual(as_source_code(if_statement), """
             return 3
         """)
@@ -496,13 +497,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertEqual(t, eval(as_source_code(codegen.String(t))), " for t = {!r}".format(t))
 
     def test_string_join_empty(self):
-        join = codegen.StringJoin([])
-        join = codegen.simplify(join)
+        join = codegen.StringJoin.build([])
         self.assertCodeEqual(as_source_code(join), "''")
 
     def test_string_join_one(self):
-        join = codegen.StringJoin([codegen.String('hello')])
-        join = codegen.simplify(join)
+        join = codegen.StringJoin.build([codegen.String('hello')])
         self.assertCodeEqual(as_source_code(join), "'hello'")
 
     def test_string_join_two(self):
@@ -516,13 +515,13 @@ class TestCodeGen(unittest.TestCase):
         scope = codegen.Scope()
         scope.reserve_name('tmp')
         var = scope.variable('tmp')
-        join1 = codegen.StringJoin([codegen.String('hello '),
-                                    codegen.String('there '),
-                                    var,
-                                    codegen.String(' how'),
-                                    codegen.String(' are you?'),
-                                    ])
-        join1 = codegen.simplify(join1)
+        join1 = codegen.StringJoin.build([
+            codegen.String('hello '),
+            codegen.String('there '),
+            var,
+            codegen.String(' how'),
+            codegen.String(' are you?'),
+        ])
         self.assertCodeEqual(as_source_code(join1), "''.join(['hello there ', tmp, ' how are you?'])")
 
     def test_cleanup_name(self):

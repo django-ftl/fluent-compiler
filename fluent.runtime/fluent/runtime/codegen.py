@@ -84,25 +84,12 @@ class PythonAst(object):
     Base class representing a simplified Python AST (not the real one).
     Generates real `ast.*` nodes via `as_ast()` method.
     """
-    def simplify(self, changes, simplifier):
-        """
-        Simplify the statement/expression, returning either a modified
-        self, or a new object.
-
-        This method should call .simplify(changes) on any contained subexpressions
-        or statements.
-
-        If changes were made, a True value must be appended to the passed in changes list.
-
-        It should also run the callable simplifier on any returned values (this
-        is an externally passed in function that may do additional higher level
-        simplifications)
-
-        """
-        return self
-
     def as_ast(self):
         raise NotImplementedError("{!r}.as_ast()".format(self.__class__))
+
+    @property
+    def child_elements(self):
+        raise NotImplementedError("{!r}.child_elements".format(self.__class__))
 
 
 class PythonAstList(object):
@@ -112,6 +99,10 @@ class PythonAstList(object):
     """
     def as_ast_list(self):
         raise NotImplementedError("{!r}.as_ast_list()".format(self.__class__))
+
+    @property
+    def child_elements(self):
+        raise NotImplementedError("child_elements needs to be created on {0}".format(type(self)))
 
 
 # `compiler` needs these attributes on AST nodes.
@@ -254,6 +245,8 @@ class Statement(object):
 
 
 class _Assignment(Statement, PythonAst):
+    child_elements = ['value']
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -268,12 +261,9 @@ class _Assignment(Statement, PythonAst):
             value=self.value.as_ast(),
             **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.value = self.value.simplify(changes, simplifier)
-        return simplifier(self, changes)
-
-
 class Block(PythonAstList):
+    child_elements = ['statements']
+
     def __init__(self, scope, parent_block=None):
         self.scope = scope
         self.statements = []
@@ -342,10 +332,6 @@ class Block(PythonAstList):
             return self.parent_block.has_assignment_for_name(name)
         return False
 
-    def simplify(self, changes, simplifier):
-        self.statements = [s.simplify(changes, simplifier) for s in self.statements]
-        return simplifier(self, changes)
-
 
 class Module(Block, PythonAst):
     def __init__(self):
@@ -357,6 +343,8 @@ class Module(Block, PythonAst):
 
 
 class Function(Scope, Statement, PythonAst):
+    child_elements = ['body']
+
     def __init__(self, name, args=None, parent_scope=None):
         super(Function, self).__init__(parent_scope=parent_scope)
         self.body = Block(self)
@@ -395,49 +383,54 @@ class Function(Scope, Statement, PythonAst):
     def add_return(self, value):
         self.body.add_return(value)
 
-    def simplify(self, changes, simplifier):
-        self.body = self.body.simplify(changes, simplifier)
-        return simplifier(self, changes)
-
 
 class Return(Statement, PythonAst):
+    child_elements = ['value']
+
     def __init__(self, value):
         self.value = value
 
     def as_ast(self):
         return ast.Return(self.value.as_ast(), **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.value = self.value.simplify(changes, simplifier)
-        return simplifier(self, changes)
-
     def __repr__(self):
         return 'Return({0}'.format(repr(self.value))
 
 
 class If(Statement, PythonAstList):
+    child_elements = ['if_blocks', 'conditions', 'else_block']
+
     def __init__(self, parent_scope, parent_block=None):
         self.if_blocks = []
-        self._conditions = []
-        self.parent_block = parent_block
-        self.else_block = Block(parent_scope, parent_block=self.parent_block)
+        self.conditions = []
+        self._parent_block = parent_block
+        self.else_block = Block(parent_scope, parent_block=self._parent_block)
         self._parent_scope = parent_scope
 
     def add_if(self, condition):
-        new_if = Block(self._parent_scope, parent_block=self.parent_block)
+        new_if = Block(self._parent_scope, parent_block=self._parent_block)
         self.if_blocks.append(new_if)
-        self._conditions.append(condition)
+        self.conditions.append(condition)
         return new_if
+
+    def finalize(self):
+        # TODO - ideally we'd have just `build` or just `finalize`
+        if not self.if_blocks:
+            # Unusual case of no conditions, only default case, but it
+            # simplifies other code to be able to handle this uniformly. We can
+            # replace this if statement with a single unconditional block.
+            return self.else_block
+        return self
 
     # We implement as_ast_list here to allow us to return a list of statements
     # in some cases.
     def as_ast_list(self, allow_empty=True):
         if len(self.if_blocks) == 0:
-            return self.else_block.as_ast_list(allow_empty=allow_empty)
+            raise AssertionError("Should have called `finalize` on If")
         if_ast = ast.If(orelse=[], **DEFAULT_AST_ARGS)
         current_if = if_ast
         previous_if = None
-        for condition, if_block in zip(self._conditions, self.if_blocks):
+        for condition, if_block in zip(self.conditions, self.if_blocks):
             current_if.test = condition.as_ast()
             current_if.body = if_block.as_ast_list()
             if previous_if is not None:
@@ -451,20 +444,10 @@ class If(Statement, PythonAstList):
 
         return [if_ast]
 
-    def simplify(self, changes, simplifier):
-        self.if_blocks = [block.simplify(changes, simplifier) for block in self.if_blocks]
-        self._conditions = [expr.simplify(changes, simplifier) for expr in self._conditions]
-        self.else_block = self.else_block.simplify(changes, simplifier)
-        if not self.if_blocks:
-            # Unusual case of no conditions, only default case, but it
-            # simplifies other code to be able to handle this uniformly. We can
-            # replace this if statement with a single unconditional block.
-            changes.append(True)
-            return simplifier(self.else_block, changes)
-        return simplifier(self, changes)
-
 
 class Try(Statement, PythonAst):
+    child_elements = ['catch_exceptions', 'try_block', 'except_block', 'else_block']
+
     def __init__(self, catch_exceptions, parent_scope):
         self.catch_exceptions = catch_exceptions
         self.try_block = Block(parent_scope)
@@ -493,13 +476,6 @@ class Try(Statement, PythonAst):
             return True
         return False
 
-    def simplify(self, changes, simplifier):
-        self.catch_exceptions = [e.simplify(changes, simplifier) for e in self.catch_exceptions]
-        self.try_block = self.try_block.simplify(changes, simplifier)
-        self.except_block = self.except_block.simplify(changes, simplifier)
-        self.else_block = self.else_block.simplify(changes, simplifier)
-        return simplifier(self, changes)
-
 
 class Expression(PythonAst):
     # type represents the Python type this expression will produce,
@@ -508,6 +484,8 @@ class Expression(PythonAst):
 
 
 class String(Expression):
+    child_elements = []
+
     type = text_type
 
     def __init__(self, string_value):
@@ -529,6 +507,8 @@ class String(Expression):
 
 
 class Number(Expression):
+    child_elements = []
+
     def __init__(self, number):
         self.number = number
         self.type = type(number)
@@ -541,6 +521,8 @@ class Number(Expression):
 
 
 class List(Expression):
+    child_elements = ['items']
+
     def __init__(self, items):
         self.items = items
         self.type = list
@@ -551,12 +533,10 @@ class List(Expression):
             ctx=ast.Load(),
             **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.items = [item.simplify(changes, simplifier) for item in self.items]
-        return simplifier(self, changes)
-
 
 class Dict(Expression):
+    child_elements = ['pairs']
+
     def __init__(self, pairs):
         # pairs is a list of key-value pairs (PythonAst object, PythonAst object)
         self.pairs = pairs
@@ -567,13 +547,10 @@ class Dict(Expression):
                         values=[v.as_ast() for k, v in self.pairs],
                         **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.pairs = [(k.simplify(changes, simplifier), v.simplify(changes, simplifier))
-                      for k, v in self.pairs]
-        return simplifier(self, changes)
-
 
 class StringJoin(Expression):
+    child_elements = ['parts']
+
     type = text_type
 
     def __init__(self, parts):
@@ -584,13 +561,11 @@ class StringJoin(Expression):
                           [List(self.parts)],
                           expr_type=self.type).as_ast()
 
-    def simplify(self, changes, simplifier):
-        # Simplify sub parts
-        self.parts = [part.simplify(changes, simplifier) for part in self.parts]
-
+    @classmethod
+    def build(cls, parts):
         # Merge adjacent String objects.
         new_parts = []
-        for part in self.parts:
+        for part in parts:
             if (len(new_parts) > 0 and
                 isinstance(new_parts[-1], String) and
                     isinstance(part, String)):
@@ -598,24 +573,22 @@ class StringJoin(Expression):
                                        part.string_value)
             else:
                 new_parts.append(part)
-        if len(new_parts) < len(self.parts):
-            changes.append(True)
-        self.parts = new_parts
+        parts = new_parts
 
         # See if we can eliminate the StringJoin altogether
-        if len(self.parts) == 0:
-            changes.append(True)
-            return simplifier(String(''), changes)
-        if len(self.parts) == 1:
-            changes.append(True)
-            return simplifier(self.parts[0], changes)
-        return simplifier(self, changes)
+        if len(parts) == 0:
+            return String('')
+        if len(parts) == 1:
+            return parts[0]
+        return cls(parts)
 
     def __repr__(self):
         return 'StringJoin([{0}])'.format(', '.join(repr(p) for p in self.parts))
 
 
 class VariableReference(Expression):
+    child_elements = []
+
     def __init__(self, name, scope):
         if name not in scope.names_in_use():
             raise AssertionError("Cannot refer to undefined variable '{0}'".format(name))
@@ -635,11 +608,13 @@ class VariableReference(Expression):
 
 
 class FunctionCall(Expression):
+    child_elements = ['args', 'kwargs']
+
     def __init__(self, function_name, args, kwargs, scope, expr_type=UNKNOWN_TYPE):
         if function_name not in scope.names_in_use():
             raise AssertionError("Cannot call unknown function '{0}'".format(function_name))
         self.function_name = function_name
-        self.args = args
+        self.args = list(args)
         self.kwargs = kwargs
         if expr_type is UNKNOWN_TYPE:
             # Try to find out automatically
@@ -680,16 +655,13 @@ class FunctionCall(Expression):
                       for name, value in self.kwargs.items()],
             **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.args = [arg.simplify(changes, simplifier) for arg in self.args]
-        self.kwargs = {name: val.simplify(changes, simplifier) for name, val in self.kwargs.items()}
-        return simplifier(self, changes)
-
     def __repr__(self):
         return 'FunctionCall({0}, {1}, {2})'.format(self.function_name, self.args, self.kwargs)
 
 
 class MethodCall(Expression):
+    child_elements = ['obj', 'args']
+
     def __init__(self, obj, method_name, args, expr_type=UNKNOWN_TYPE):
         # We can't check method_name because we don't know the type of obj yet.
         self.obj = obj
@@ -709,11 +681,6 @@ class MethodCall(Expression):
             keywords=[],
             **DEFAULT_AST_ARGS)
 
-    def simplify(self, changes, simplifier):
-        self.obj = self.obj.simplify(changes, simplifier)
-        self.args = [arg.simplify(changes, simplifier) for arg in self.args]
-        return simplifier(self, changes)
-
     def __repr__(self):
         return 'MethodCall({0}, {1}, {2})'.format(repr(self.obj),
                                                   repr(self.method_name),
@@ -721,6 +688,8 @@ class MethodCall(Expression):
 
 
 class DictLookup(Expression):
+    child_elements = ['lookup_obj', 'lookup_arg']
+
     def __init__(self, lookup_obj, lookup_arg, expr_type=UNKNOWN_TYPE):
         self.lookup_obj = lookup_obj
         self.lookup_arg = lookup_arg
@@ -732,11 +701,6 @@ class DictLookup(Expression):
             slice=ast.Index(value=self.lookup_arg.as_ast(), **DEFAULT_AST_ARGS),
             ctx=ast.Load(),
             **DEFAULT_AST_ARGS)
-
-    def simplify(self, changes, simplifier):
-        self.lookup_obj = self.lookup_obj.simplify(changes, simplifier)
-        self.lookup_arg = self.lookup_arg.simplify(changes, simplifier)
-        return simplifier(self, changes)
 
 
 ObjectCreation = FunctionCall
@@ -752,14 +716,11 @@ class NoneExpr(Expression):
 
 
 class BinaryOperator(Expression):
+    child_elements = ['left', 'right']
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
-
-    def simplify(self, changes, simplifier):
-        self.left = self.left.simplify(changes, simplifier)
-        self.right = self.right.simplify(changes, simplifier)
-        return simplifier(self, changes)
 
 
 class Equals(BinaryOperator):
@@ -788,12 +749,39 @@ class Or(BoolOp):
     op = ast.Or
 
 
-def simplify(codegen_ast, simplifier=None):
-    if simplifier is None:
-        def simplifier(n, changes):
-            return n
+def simplify(codegen_ast, simplifier):
     changes = [True]
+
+    # Wrap `simplifer` (which takes additional `changes` arg)
+    # into function that take just `node`, as required by rewriting_traverse
+    def rewriter(node):
+        return simplifier(node, changes)
+
     while any(changes):
-        changes = []
-        codegen_ast = codegen_ast.simplify(changes, simplifier)
+        changes[:] = []
+        rewriting_traverse(codegen_ast, rewriter)
     return codegen_ast
+
+
+def rewriting_traverse(node, func):
+    if isinstance(node, (PythonAst, PythonAstList)):
+        new_node = func(node)
+        if new_node is not node:
+            morph_into(node, new_node)
+        for k in node.child_elements:
+            rewriting_traverse(getattr(node, k), func)
+    elif isinstance(node, (list, tuple)):
+        for i in node:
+            rewriting_traverse(i, func)
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            rewriting_traverse(k, func)
+            rewriting_traverse(v, func)
+
+
+def morph_into(item, new_item):
+    # This naughty little function allows us to make `item` behave like
+    # `new_item` in every way, except it maintains the identity of `item`, so
+    # that we don't have to rewrite a tree of objects with new objects.
+    item.__class__ = new_item.__class__
+    item.__dict__ = new_item.__dict__

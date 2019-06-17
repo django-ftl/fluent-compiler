@@ -450,7 +450,7 @@ def compile_expr_pattern(pattern, block, compiler_env):
             parts.append(codegen.String(PDI))
 
     # > ''.join($[p for p in parts])
-    return codegen.StringJoin([finalize_expr_as_string(p, block, compiler_env) for p in parts])
+    return codegen.StringJoin.build([finalize_expr_as_string(p, block, compiler_env) for p in parts])
 
 
 @compile_expr.register(TextElement)
@@ -573,7 +573,7 @@ def compile_expr_select_expression(select_expr, block, compiler_env):
         if all(t == first_type for t in assigned_types):
             block.scope.set_name_properties(return_tmp_name, {codegen.PROPERTY_TYPE: first_type})
 
-    block.add_statement(if_statement)
+    block.add_statement(if_statement.finalize())
     return block.scope.variable(return_tmp_name)
 
 
@@ -868,9 +868,6 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
     Resolve a select expression statically, given a codegen.PythonAst object
     `key_ast` representing the key value, or return None if not possible.
     """
-    # We need to 'peek' inside what we've produced so far to see if it is something
-    # static. To do that reliably we must simplify at this point:
-    key_ast = codegen.simplify(key_ast)
     key_is_fluent_none = is_fluent_none(key_ast)
     key_is_number = (isinstance(key_ast, codegen.Number) or
                      (is_NUMBER_function_call(key_ast) and isinstance(key_ast.args[0], codegen.Number)))
