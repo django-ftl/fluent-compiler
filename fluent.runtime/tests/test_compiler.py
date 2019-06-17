@@ -756,3 +756,25 @@ class TestCompiler(unittest.TestCase):
                 return _ret
         """)
         self.assertEqual(errs, [])
+
+    # TODO - eliminate unused assignments e.g. `_plural_form = plural_form_for_number(_arg)` is unneeded
+    # def test_unused_assignments(self):
+    #     code, errs = compile_messages_to_python("""
+    #         foo = { $arg ->
+    #            [0]     Zero
+    #           *[other] Other
+    #          }
+    #     """, self.locale)
+    #     self.assertCodeEqual(code, """
+    #         def foo(message_args, errors):
+    #             try:
+    #                 _arg = message_args['arg']
+    #             except (LookupError, TypeError):
+    #                 errors.append(FluentReferenceError('Unknown external: arg'))
+    #                 _arg = FluentNone('arg')
+    #             if _arg == 0:
+    #                 _ret = 'Zero'
+    #             else:
+    #                 _ret = 'Other'
+    #             return _ret
+    #     """)
