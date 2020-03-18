@@ -154,24 +154,6 @@ else:
         return sanitize_function_args((positional, keywords), name, errors)
 
 
-def native_to_fluent(val):
-    """
-    Convert a python type to a Fluent Type.
-    """
-    if isinstance(val, int):
-        return FluentInt(val)
-    if isinstance(val, float):
-        return FluentFloat(val)
-    if isinstance(val, Decimal):
-        return FluentDecimal(val)
-
-    if isinstance(val, datetime):
-        return FluentDateTime.from_date_time(val)
-    if isinstance(val, date):
-        return FluentDate.from_date(val)
-    return val
-
-
 def args_match(function_name, args, kwargs, arg_spec):
     """
     Checks the passed in args/kwargs against the function arg_spec

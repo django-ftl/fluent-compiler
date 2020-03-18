@@ -1,10 +1,9 @@
 from __future__ import absolute_import, unicode_literals
 
-from fluent.runtime import CompilingFluentBundle, InterpretingFluentBundle
+from fluent.runtime import CompilingFluentBundle
 
 
 fluent_bundle_implementations = [
-    (InterpretingFluentBundle, "_Interpreter"),
     (CompilingFluentBundle, "_Compiler")
 ]
 

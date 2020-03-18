@@ -12,9 +12,7 @@ from fluent.syntax.ast import Junk, Message, Term
 from .builtins import BUILTINS
 from .compiler import compile_messages
 from .errors import FluentDuplicateMessageId, FluentJunkFound
-from .prepare import Compiler
-from .resolver import CurrentEnvironment, ResolverEnvironment
-from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL, ast_to_id, native_to_fluent
+from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL, ast_to_id
 
 
 class FluentBundleBase(object):
@@ -84,46 +82,6 @@ class FluentBundleBase(object):
         raise NotImplementedError()
 
 
-class InterpretingFluentBundle(FluentBundleBase):
-
-    def __init__(self, locales, functions=None, use_isolating=True):
-        super(InterpretingFluentBundle, self).__init__(locales, functions=functions, use_isolating=use_isolating)
-        self._compiled = {}
-        self._compiler = Compiler()
-
-    def lookup(self, full_id):
-        if full_id not in self._compiled:
-            entry_id = full_id.split(ATTRIBUTE_SEPARATOR, 1)[0]
-            entry = self._messages_and_terms[entry_id]
-            compiled = self._compiler(entry)
-            if compiled.value is not None:
-                self._compiled[entry_id] = compiled.value
-            for attr in compiled.attributes:
-                self._compiled[ATTRIBUTE_SEPARATOR.join([entry_id, attr.id.name])] = attr.value
-        return self._compiled[full_id]
-
-    def format(self, message_id, args=None):
-        if message_id.startswith(TERM_SIGIL):
-            raise LookupError(message_id)
-        if args is not None:
-            fluent_args = {
-                argname: native_to_fluent(argvalue)
-                for argname, argvalue in args.items()
-            }
-        else:
-            fluent_args = {}
-
-        errors = []
-        resolve = self.lookup(message_id)
-        env = ResolverEnvironment(context=self,
-                                  current=CurrentEnvironment(args=fluent_args),
-                                  errors=errors)
-        return [resolve(env), errors]
-
-    def check_messages(self):
-        return self._parsing_issues[:]
-
-
 class CompilingFluentBundle(FluentBundleBase):
     def __init__(self, *args, **kwargs):
         super(CompilingFluentBundle, self).__init__(*args, **kwargs)
@@ -171,4 +129,4 @@ class CompilingFluentBundle(FluentBundleBase):
         return self._parsing_issues + self._compilation_errors
 
 
-FluentBundle = InterpretingFluentBundle
+FluentBundle = CompilingFluentBundle
