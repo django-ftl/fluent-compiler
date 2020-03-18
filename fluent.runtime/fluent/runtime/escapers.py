@@ -153,8 +153,7 @@ class EscaperJoin(codegen.StringJoin):
             if len(new_parts) > 0:
                 last_part = new_parts[-1]
                 # Merge string literals wrapped in mark_escaped calls
-                if (escaper.name != null_escaper.name and
-                    all((isinstance(p, codegen.FunctionCall) and
+                if (all((isinstance(p, codegen.FunctionCall) and
                          p.function_name == escaper.mark_escaped_name() and
                          isinstance(p.args[0], codegen.String))
                         for p in [last_part, part])):
@@ -167,5 +166,9 @@ class EscaperJoin(codegen.StringJoin):
 
             if not handled:
                 new_parts.append(part)
+
         parts = new_parts
+        if len(parts) == 1:
+            return parts[0]
+
         return cls(parts, escaper, scope)

@@ -1046,14 +1046,13 @@ class Simplifier(object):
         self.compiler_env = compiler_env
 
     def __call__(self, codegen_ast, changes):
-        # Simplifications we can do on the AST tree. This function works
-        # similarly to the PythonAst.simplify() methods i.e. we append to
+        # Simplifications we can do on the AST tree. We append to
         # changes if we made a change, and either mutate codegen_ast or
         # return a new/different object.
 
-        # The logic here wouldn't be appropriate to put into codegen simplify()
-        # methods because it is higher level and contains more logic specific to
-        # Fluent.
+        # The logic here wouldn't be appropriate to put into codegen methods
+        # like `build` or `finalize` because it is higher level and contains
+        # more logic specific to Fluent.
 
         # We match against a number of patterns:
 

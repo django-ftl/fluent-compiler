@@ -575,7 +575,7 @@ class StringJoin(Expression):
         parts = new_parts
 
         # See if we can eliminate the StringJoin altogether
-        if len(parts) == 0 and cls.type is text_type:
+        if len(parts) == 0:
             return String('')
         if len(parts) == 1:
             return parts[0]
