@@ -1,82 +1,42 @@
-Project Fluent
-==============
+fluent-compiler
+===================
 
 This is a Python implementation of Project Fluent, a localization framework
 designed to unleash the entire expressive power of natural language
 translations.
 
-Project Fluent keeps simple things simple and makes complex things possible.
-The syntax used for describing translations is easy to read and understand.  At
-the same time it allows, when necessary, to represent complex concepts from
-natural languages like gender, plurals, conjugations, and others.
+It provides a different implementation from the official
+[fluent.runtime](https://github.com/projectfluent/python-fluent) implementation,
+distinguished mainly by:
 
+- strategy: we compile FTL files to Python AST
+- speed: as a result of the above, plus optimizations, we get blazing fast
+  performance, especially when combined with PyPy which can further optimize.
+- compile-time checking and error reporting
+- 'escapers' feature for handling things like HTML escaping/embedding correctly.
 
-Learn the FTL syntax
---------------------
+Status
+-------
 
-FTL is a localization file format used for describing translation resources.
-FTL stands for _Fluent Translation List_.
+This code was originally developed as part of `fluent.runtime`, as an
+alternative implementation of `FluentBundle`, but never got merged to the master
+branch. We are in the process of pulling it out as a separate package.
 
-FTL is designed to be simple to read, but at the same time allows to represent
-complex concepts from natural languages like gender, plurals, conjugations, and
-others.
-
-    hello-user = Hello, { $username }!
-
-[Read the Fluent Syntax Guide][] in order to learn more about the syntax.  If
-you're a tool author you may be interested in the formal [EBNF grammar][].
-
-[Read the Fluent Syntax Guide]: http://projectfluent.org/fluent/guide/
-[EBNF grammar]: https://github.com/projectfluent/fluent/tree/master/spec
-
+It has seen usage in production a dependency of `django-ftl` for a long time.
+However, now that we don't need full compatibility with `fluent.runtime` it will
+be modified further in terms of interface.
 
 Installation
 ------------
 
-python-fluent consists of two packages:
+To install:
 
-* `fluent.syntax` - includes AST classes and parser. Most end users will not
-  need this directly. Documentation coming soon!
+    pip install fluent_compiler
 
-  To install:
-
-        pip install fluent.syntax
-
-
-* `fluent.runtime` - methods for generating translations from FTL files.
-
-  To install:
-
-        pip install fluent.runtime
-
-  (The correct version of ``fluent.syntax`` will be installed automatically)
-
-
-PyPI also contains an old `fluent` package which is an older version of just
-`fluent.syntax`.
+(Hopefully soon!)
 
 Usage
 -----
 
-For fluent.runtime, see the [docs folder](fluent.runtime/docs) or [read them on
-readthedocs.org](https://fluent-runtime.readthedocs.io/en/latest/).
-
-Discuss
--------
-
-We'd love to hear your thoughts on Project Fluent!  Whether you're a localizer
-looking for a better way to express yourself in your language, or a developer
-trying to make your app localizable and multilingual, or a hacker looking for
-a project to contribute to, please do get in touch on the mailing list and the
-IRC channel.
-
- - mailing list: https://lists.mozilla.org/listinfo/tools-l10n
- - IRC channel: [irc://irc.mozilla.org/l20n](irc://irc.mozilla.org/l20n)
-
-
-Get Involved
-------------
-
-python-fluent is open-source, licensed under the Apache License, Version 2.0.
-We encourage everyone to take a look at our code and we'll listen to your
-feedback.
+See the [docs folder](docs) or [read them on
+readthedocs.org](https://fluent-compiler.readthedocs.io/en/latest/).
