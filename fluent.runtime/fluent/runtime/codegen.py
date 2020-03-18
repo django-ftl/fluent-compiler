@@ -556,10 +556,9 @@ class StringJoin(Expression):
     def __init__(self, parts):
         self.parts = parts
 
-    def as_ast(self):
-        return MethodCall(String(''), 'join',
-                          [List(self.parts)],
-                          expr_type=self.type).as_ast()
+    def __repr__(self):
+        return '{0}([{1}])'.format(self.__class__.__name__,
+                                   ', '.join(repr(p) for p in self.parts))
 
     @classmethod
     def build(cls, parts):
@@ -576,14 +575,16 @@ class StringJoin(Expression):
         parts = new_parts
 
         # See if we can eliminate the StringJoin altogether
-        if len(parts) == 0:
+        if len(parts) == 0 and cls.type is text_type:
             return String('')
         if len(parts) == 1:
             return parts[0]
         return cls(parts)
 
-    def __repr__(self):
-        return 'StringJoin([{0}])'.format(', '.join(repr(p) for p in self.parts))
+    def as_ast(self):
+        return MethodCall(String(''), 'join',
+                          [List(self.parts)],
+                          expr_type=self.type).as_ast()
 
 
 class VariableReference(Expression):

@@ -28,7 +28,7 @@ class FluentBundleBase(object):
     See the documentation of the Fluent syntax for more information.
     """
 
-    def __init__(self, locales, functions=None, use_isolating=True):
+    def __init__(self, locales, functions=None, use_isolating=True, escapers=None):
         self.locales = locales
         _functions = BUILTINS.copy()
         if functions:
@@ -39,6 +39,7 @@ class FluentBundleBase(object):
         self._parsing_issues = []
         self._babel_locale = self._get_babel_locale()
         self._plural_form = babel.plural.to_python(self._babel_locale.plural_form)
+        self._escapers = escapers
 
     def add_messages(self, source):
         parser = FluentParser()
@@ -107,7 +108,8 @@ class CompilingFluentBundle(FluentBundleBase):
             self._messages_and_terms,
             self._babel_locale,
             use_isolating=self.use_isolating,
-            functions=self._functions)
+            functions=self._functions,
+            escapers=self._escapers)
         self._mark_clean()
 
     # 'format' is the hot path for many scenarios, so we try to optimize it. To

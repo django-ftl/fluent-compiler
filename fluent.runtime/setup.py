@@ -8,7 +8,8 @@ else:
     # functools.singledispatch is in stdlib from Python 3.4 onwards.
     old_python_requires = []
 
-tests_requires = ['ast_decompiler>=0.3.2', 'hypothesis>=4.9.0']
+tests_requires = ['ast_decompiler>=0.3.2', 'beautifulsoup4>=4.7.1', 'hypothesis>=4.9.0',
+                  'Markdown>=3.0.1', 'MarkupSafe>=1.1.1']
 
 setup(name='fluent.runtime',
       version='0.1',
