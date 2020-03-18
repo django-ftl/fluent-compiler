@@ -723,14 +723,14 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
     def test_reuse_external_arguments_multiple_branches(self):
         code, errs = compile_messages_to_python("""
             foo = { $lookup ->
-                 [a]   { $foo }
+                 [a]   { $arg }
                  [b]   B
-                *[c]   { $foo }
+                *[c]   { $arg }
              }
         """, self.locale)
-        # We should only do 'foo' lookup for first and last branch, for efficiency.
+        # We should only do 'arg' lookup for first and last branch, for efficiency.
         # But we need to be aware that in last branch, we haven't already looked
-        # up 'foo', despite the fact that we did it in an earlier branch.
+        # up 'arg', despite the fact that we did it in an earlier branch.
         self.assertCodeEqual(code, """
             def foo(message_args, errors):
                 try:
@@ -740,25 +740,25 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                     _arg = FluentNone('lookup')
                 if _arg == 'a':
                     try:
-                        _arg2 = message_args['foo']
+                        _arg2 = message_args['arg']
                     except (LookupError, TypeError):
-                        errors.append(FluentReferenceError('Unknown external: foo'))
-                        _arg2 = FluentNone('foo')
+                        errors.append(FluentReferenceError('Unknown external: arg'))
+                        _arg2 = FluentNone('arg')
                         _arg_h = _arg2
                     else:
-                        _arg_h = handle_argument(_arg2, 'foo', locale, errors)
+                        _arg_h = handle_argument(_arg2, 'arg', locale, errors)
                     _ret = handle_output(_arg_h, locale, errors)
                 elif _arg == 'b':
                     _ret = 'B'
                 else:
                     try:
-                        _arg3 = message_args['foo']
+                        _arg3 = message_args['arg']
                     except (LookupError, TypeError):
-                        errors.append(FluentReferenceError('Unknown external: foo'))
-                        _arg3 = FluentNone('foo')
+                        errors.append(FluentReferenceError('Unknown external: arg'))
+                        _arg3 = FluentNone('arg')
                         _arg_h2 = _arg3
                     else:
-                        _arg_h2 = handle_argument(_arg3, 'foo', locale, errors)
+                        _arg_h2 = handle_argument(_arg3, 'arg', locale, errors)
                     _ret = handle_output(_arg_h2, locale, errors)
                 return _ret
         """)
