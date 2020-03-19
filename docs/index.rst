@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to fluent_compiler's documentation!
-==========================================
+===========================================
 
 These are the docs for ``fluent_compiler`` |release|. Check the :doc:`/history` for
 significant changes.
@@ -17,4 +17,7 @@ significant changes.
    usage
    functions
    errors
+   escaping
+   security
+   implementations
    history

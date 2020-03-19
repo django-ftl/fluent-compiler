@@ -93,18 +93,6 @@ module or the start of your repl session:
 
     from __future__ import unicode_literals
 
-CompilingFluentBundle
-~~~~~~~~~~~~~~~~~~~~~
-
-In addition to the default ``FluentBundle`` implementation, there is also a high
-performance implementation that compilers to Python AST. You can use it just the same:
-
-.. code-block:: python
-
-   from fluent_compiler import CompilingFluentBundle as FluentBundle
-
-Be sure to check the notes on :doc:`implementations`, especially the security
-section.
 
 Numbers
 ~~~~~~~
@@ -234,10 +222,21 @@ Known limitations and bugs
 
 Help with the above would be welcome!
 
+fluent.runtime
+~~~~~~~~~~~~~~
+
+``fluent_compiler`` provides a ``FluentBundle`` implementation that is
+compatible with the ``FluentBundle`` from ``fluent.runtime`` 0.1.
+
+Be sure to check the notes on :doc:`implementations`, especially the security
+section.
+
 
 Other features and further information
 --------------------------------------
 
-* :doc:`implementations`
 * :doc:`functions`
 * :doc:`errors`
+* :doc:`escaping`
+* :doc:`security`
+* :doc:`implementations`

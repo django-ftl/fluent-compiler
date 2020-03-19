@@ -77,6 +77,8 @@ The Fluent spec allows keyword arguments with hyphens (``-``) in them. These are
 not valid identifiers in Python, so if you need to a custom function to accept
 keyword arguments like this, you will have to use ``**kwargs`` syntax e.g.:
 
+.. code-block:: python
+
     def my_func(kwarg1=None, **kwargs):
         kwarg_with_hyphens = kwargs.pop('kwarg-with-hyphens', None)
         # etc.

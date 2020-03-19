@@ -39,14 +39,14 @@ an instance of a class with appropriate methods defined. The attributes are:
      it is a string with a leading dash - e.g. ``-brand-name``. For message
      attributes, it is a string in the form ``messsage-name.attribute-name``
 
-In the future, probably more hints will be passed (for example, comments
-attached to the message), so for future compatibility this callable should use
-the ``**hints`` syntax to collect remaining keyword arguments.
+  In the future, probably more hints will be passed (for example, comments
+  attached to the message), so for future compatibility this callable should use
+  the ``**hints`` syntax to collect remaining keyword arguments.
 
-The callable should return ``True`` if the escaper should be used for that
-message, ``False`` otherwise. For every message and message attribute, the
-``select`` callable of each escaper in the list of escapers is tried in turn,
-and the first to return ``True`` is used.
+  The callable should return ``True`` if the escaper should be used for that
+  message, ``False`` otherwise. For every message and message attribute, the
+  ``select`` callable of each escaper in the list of escapers is tried in turn,
+  and the first to return ``True`` is used.
 
 - ``output_type`` - the type of values that are returned by ``escape``,
   ``mark_escape``, and ``join``, and therefore by the whole message.
@@ -90,6 +90,9 @@ The escaping functions need to obey some rules:
 
   ``join([mark_escaped(a), mark_escaped(b)]) == mark_escaped(a + b)``
 
+  (This is used for optimizing the generated code)
+
+
 Example
 ~~~~~~~
 
@@ -125,7 +128,7 @@ can cause problems in various HTML contexts - for example:
 
     signup-message-html =
       Hello guest - please remember to
-      <a href="{ $signup_url}">make an account.</a>
+      <a href="{ $signup_url }">make an account.</a>
 
 Isolation characters around ``$signup_url`` will break the link. For HTML, you
 should instead use the `bdi element
@@ -146,7 +149,7 @@ some rules apply:
   escaper applied.
 
 - A message with an escaper applied cannot include a message or term with a
-  different esacper applied - this will generate a ``TypeError`` in the list of
+  different escaper applied - this will generate a ``TypeError`` in the list of
   errors returned.
 
 - A message with no escaper applied cannot include a message with an escaper
