@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-from fluent_compiler import CompilingFluentBundle
+from fluent_compiler import FluentBundle
 from fluent_compiler.compiler import messages_to_module
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from markupsafe import Markup, escape
@@ -12,17 +12,17 @@ from fluent_compiler.utils import SimpleNamespace
 from .test_codegen import decompile_ast_list, normalize_python
 from .utils import dedent_ftl
 
-# Some TDD tests to help develop CompilingFluentBundle. It should be possible to delete
+# Some TDD tests to help develop compiler. It should be possible to delete
 # the tests here and still have complete test coverage of the compiler.py module, via
 # the other FluentBundle.format tests.
 
 
 def compile_messages_to_python(source, locale, use_isolating=False, functions=None, escapers=None):
-    # We use CompilingFluentBundle partially here, but then switch to
+    # We use FluentBundle partially here, but then switch to
     # messages_to_module instead of compile_messages so that we can get the AST
     # back instead of a compiled function.
-    bundle = CompilingFluentBundle([locale], use_isolating=use_isolating,
-                                   functions=functions, escapers=escapers)
+    bundle = FluentBundle([locale], use_isolating=use_isolating,
+                          functions=functions, escapers=escapers)
     bundle.add_messages(dedent_ftl(source))
     module, message_mapping, module_globals, errors = messages_to_module(
         bundle._messages_and_terms, bundle._babel_locale,

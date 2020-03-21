@@ -15,9 +15,9 @@ from .errors import FluentDuplicateMessageId, FluentJunkFound
 from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL, ast_to_id
 
 
-class FluentBundleBase(object):
+class FluentBundle(object):
     """
-    Message contexts are single-language stores of translations.  They are
+    Message bundles are single-language stores of translations.  They are
     responsible for parsing translation resources in the Fluent syntax and can
     format translation units (entities) to strings.
 
@@ -27,7 +27,6 @@ class FluentBundleBase(object):
     which describe their grammatical features, and can use Fluent builtins.
     See the documentation of the Fluent syntax for more information.
     """
-
     def __init__(self, locales, functions=None, use_isolating=True, escapers=None):
         self.locales = locales
         _functions = BUILTINS.copy()
@@ -40,6 +39,7 @@ class FluentBundleBase(object):
         self._babel_locale = self._get_babel_locale()
         self._plural_form = babel.plural.to_python(self._babel_locale.plural_form)
         self._escapers = escapers
+        self._mark_dirty()
 
     def add_messages(self, source):
         parser = FluentParser()
@@ -57,6 +57,7 @@ class FluentBundleBase(object):
                     (None, FluentJunkFound("Junk found: " +
                                            '; '.join(a.message for a in item.annotations),
                                            item.annotations)))
+        self._mark_dirty()
 
     def has_message(self, message_id):
         if message_id.startswith(TERM_SIGIL) or ATTRIBUTE_SEPARATOR in message_id:
@@ -72,22 +73,6 @@ class FluentBundleBase(object):
         # TODO - log error
         return babel.Locale.default()
 
-    def format(self, message_id, args=None):
-        raise NotImplementedError()
-
-    def check_messages(self):
-        """
-        Check messages for errors and return as a list of two tuples:
-           (message ID or None, exception object)
-        """
-        raise NotImplementedError()
-
-
-class CompilingFluentBundle(FluentBundleBase):
-    def __init__(self, *args, **kwargs):
-        super(CompilingFluentBundle, self).__init__(*args, **kwargs)
-        self._mark_dirty()
-
     def _mark_dirty(self):
         self._is_dirty = True
         # Clear out old compilation errors, they might not apply if we
@@ -98,10 +83,6 @@ class CompilingFluentBundle(FluentBundleBase):
     def _mark_clean(self):
         self._is_dirty = False
         self.format = self._format
-
-    def add_messages(self, source):
-        super(CompilingFluentBundle, self).add_messages(source)
-        self._mark_dirty()
 
     def _compile(self):
         self._compiled_messages, self._compilation_errors = compile_messages(
@@ -129,6 +110,3 @@ class CompilingFluentBundle(FluentBundleBase):
         if self._is_dirty:
             self._compile()
         return self._parsing_issues + self._compilation_errors
-
-
-FluentBundle = CompilingFluentBundle

@@ -11,8 +11,8 @@ from gettext import translation
 import pytest
 import six
 
-from fluent.runtime import InterpretingFluentBundle
-from fluent_compiler import CompilingFluentBundle
+from fluent.runtime import FluentBundle as InterpretingFluentBundle
+from fluent_compiler import FluentBundle as CompilingFluentBundle
 
 this_file = os.path.abspath(__file__)
 this_dir = os.path.dirname(this_file)

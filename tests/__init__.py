@@ -1,10 +1,10 @@
 from __future__ import absolute_import, unicode_literals
 
-from fluent_compiler import CompilingFluentBundle
+from fluent_compiler import FluentBundle
 
 
 fluent_bundle_implementations = [
-    (CompilingFluentBundle, "_Compiler")
+    (FluentBundle, "_Compiler")
 ]
 
 

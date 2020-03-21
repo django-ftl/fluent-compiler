@@ -15,7 +15,7 @@ There are some differences to note:
   attempt things like a `billion laughs attack
   <https://en.wikipedia.org/wiki/Billion_laughs_attack>`_ to consume a large
   amount of memory or CPU time. For the sake of performance,
-  ``CompilingFluentBundle`` does not have these protections.
+  ``fluent_compiler`` does not have these protections.
 
   It should be noted that both implementations are able to detect and stop
   infinite recursion errors (``fluent_compiler`` does this at compile time),
