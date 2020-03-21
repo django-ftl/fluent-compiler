@@ -207,11 +207,6 @@ ways:
 Known limitations and bugs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  We do not yet support ``NUMBER(..., currencyDisplay="name")`` - see
-   `this python-babel pull
-   request <https://github.com/python-babel/babel/pull/585>`_ which
-   needs to be merged and released.
-
 - Most options to ``DATETIME`` are not yet supported. See the `MDN docs for
   Intl.DateTimeFormat
   <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat>`_,

@@ -8,7 +8,7 @@ from decimal import Decimal
 import attr
 import pytz
 from babel.dates import format_date, format_time, get_datetime_format, get_timezone
-from babel.numbers import NumberPattern, parse_pattern
+from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pattern, parse_pattern
 
 FORMAT_STYLE_DECIMAL = "decimal"
 FORMAT_STYLE_CURRENCY = "currency"
@@ -116,9 +116,12 @@ class FluentNumber(FluentType):
             pattern = self._apply_options(base_pattern)
             return pattern.apply(self, locale)
         elif self.options.style == FORMAT_STYLE_CURRENCY:
-            base_pattern = locale.currency_formats['standard']
-            pattern = self._apply_options(base_pattern)
-            return pattern.apply(self, locale, currency=self.options.currency)
+            if self.options.currencyDisplay == 'name':
+                return self._format_currency_long_name(locale)
+            else:
+                base_pattern = locale.currency_formats['standard']
+                pattern = self._apply_options(base_pattern)
+                return pattern.apply(self, locale, currency=self.options.currency)
 
     def _apply_options(self, pattern):
         # We are essentially trying to copy the
@@ -134,24 +137,15 @@ class FluentNumber(FluentType):
         pattern = clone_pattern(pattern)
         if not self.options.useGrouping:
             pattern.grouping = _UNGROUPED_PATTERN.grouping
-        if self.options.style == FORMAT_STYLE_CURRENCY:
-            if self.options.currencyDisplay == CURRENCY_DISPLAY_CODE:
-                # Not sure of the correct algorithm here, but this seems to
-                # work:
-                def replacer(s):
-                    return s.replace("¤", "¤¤")
-                pattern.suffix = (replacer(pattern.suffix[0]),
-                                  replacer(pattern.suffix[1]))
-                pattern.prefix = (replacer(pattern.prefix[0]),
-                                  replacer(pattern.prefix[1]))
-            elif self.options.currencyDisplay == CURRENCY_DISPLAY_NAME:
-                # No support for this yet - see
-                # https://github.com/python-babel/babel/issues/578 But it's
-                # better to display something than crash or a generic fallback
-                # string, so we just issue a warning and carry on for now.
-                warnings.warn("Unsupported currencyDisplayValue {0}, falling back to {1}"
-                              .format(CURRENCY_DISPLAY_NAME,
-                                      CURRENCY_DISPLAY_SYMBOL))
+        if self.options.style == FORMAT_STYLE_CURRENCY and self.options.currencyDisplay == CURRENCY_DISPLAY_CODE:
+            # Not sure of the correct algorithm here, but this seems to
+            # work:
+            def replacer(s):
+                return s.replace("¤", "¤¤")
+            pattern.suffix = (replacer(pattern.suffix[0]),
+                              replacer(pattern.suffix[1]))
+            pattern.prefix = (replacer(pattern.prefix[0]),
+                              replacer(pattern.prefix[1]))
         if (self.options.minimumSignificantDigits is not None
                 or self.options.maximumSignificantDigits is not None):
             # This triggers babel routines into 'significant digits' mode:
@@ -171,6 +165,23 @@ class FluentNumber(FluentType):
                 pattern.frac_prec = (pattern.frac_prec[0], self.options.maximumFractionDigits)
 
         return pattern
+
+    def _format_currency_long_name(self, locale):
+        # This reproduces some of bable.numbers._format_currency_long_name
+        # Step 3.
+        unit_pattern = get_currency_unit_pattern(self.options.currency, count=self, locale=locale)
+
+        # Step 4.
+        display_name = get_currency_name(self.options.currency, count=self, locale=locale)
+
+        # Step 5.
+        base_pattern = locale.decimal_formats.get(None)
+        pattern = self._apply_options(base_pattern)
+
+        number_part = pattern.apply(
+            self, locale, currency=self.options.currency,
+        )
+        return unit_pattern.format(number_part, display_name)
 
 
 def merge_options(options_class, base, kwargs):

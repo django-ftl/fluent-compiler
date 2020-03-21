@@ -25,6 +25,7 @@ class TestNumberBuiltin(unittest.TestCase):
             merge-params     = { NUMBER($arg, useGrouping: 0) }
             bad-kwarg        = { NUMBER(1, badkwarg: 0) }
             bad-arity        = { NUMBER(1, 2) }
+            currency-name    = { NUMBER($arg, currencyDisplay: "name") }
         """))
 
     def test_implicit_call(self):
@@ -62,6 +63,21 @@ class TestNumberBuiltin(unittest.TestCase):
         val, errs = self.ctx.format('from-arg', {'arg': fluent_number(1.234, style="percent")})
         self.assertEqual(val, "123%")
         self.assertEqual(len(errs), 0)
+
+    def test_currency_display(self):
+        val, errs = self.ctx.format('currency-name', {'arg': fluent_number(1234.56, style="currency", currency="USD")})
+        self.assertEqual(val, "1,234.56 US dollars")
+        self.assertEqual(errs, [])
+        # Check we can use other options
+        val, errs = self.ctx.format('currency-name', {
+            'arg': fluent_number(
+                1234.56,
+                style="currency",
+                currency="USD",
+                useGrouping=False,
+            )
+        })
+        self.assertEqual(val, "1234.56 US dollars")
 
     def test_from_arg_int(self):
         val, errs = self.ctx.format('from-arg', {'arg': 123456})
