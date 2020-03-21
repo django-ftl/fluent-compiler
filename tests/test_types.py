@@ -87,7 +87,7 @@ class TestFluentNumber(unittest.TestCase):
     def test_maximum_fraction_digits(self):
         f1 = fluent_number(1.23456)
         self.assertEqual(f1.format(self.locale), "1.235")
-        f2 = fluent_number(1.23456, maximumFractionDigits=5)
+        f2 = fluent_number(1.23456123, maximumFractionDigits=5)
         self.assertEqual(f2.format(self.locale), "1.23456")
 
     def test_minimum_significant_digits(self):
