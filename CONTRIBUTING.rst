@@ -31,6 +31,12 @@ To contribute fixes and features, you'll need to get set up for development:
 
 If all that is successful, you are in good shape to start developing!
 
+You can also run tests with pytest::
+
+  pip install pytest
+  pytest
+
+
 
 Fixes and features
 ------------------
