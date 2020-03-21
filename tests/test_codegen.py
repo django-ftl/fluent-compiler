@@ -23,7 +23,7 @@ def normalize_python(txt):
     return textwrap.dedent(txt.rstrip()).strip()
 
 
-class TestDecompiler(decompiler.Decompiler):
+class CodegenDecompiler(decompiler.Decompiler):
     if sys.version_info < (3, 0):
         # We override one bit of behaviour to make Python 2 testing simpler.
 
@@ -52,7 +52,7 @@ class TestDecompiler(decompiler.Decompiler):
 def decompile(ast, indentation=4, line_length=100, starting_indentation=0):
     """Decompiles an AST into Python code.
     """
-    decompiler = TestDecompiler(
+    decompiler = CodegenDecompiler(
         indentation=indentation,
         line_length=line_length,
         starting_indentation=starting_indentation,
