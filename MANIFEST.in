@@ -1,3 +1,5 @@
+include *.py
+include *.txt
 include *.md
 include *.rst
 include *.sh
@@ -9,3 +11,7 @@ recursive-include docs *.bat
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs Makefile
+recursive-include tests *.py
+recursive-include tools *.md
+recursive-include tools *.py
+recursive-include tools *.txt
