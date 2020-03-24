@@ -11,7 +11,9 @@ else:
 setup(name='fluent_compiler',
       version='0.1',
       description='Blazing fast implementation of Fluent localization language.',
-      long_description='See https://github.com/django-ftl/fluent-compiler/ for more info.',
+      long_description=open('README.rst').read() +
+      '\n\nSee https://github.com/django-ftl/fluent-compiler/ for more info.',
+      long_description_content_type='text/x-rst',
       author='Luke Plant',
       author_email='L.Plant.98@cantab.net',
       license='APL 2',
