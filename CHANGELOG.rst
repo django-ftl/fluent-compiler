@@ -1,6 +1,11 @@
 Changelog
 =========
 
+fluent_compiler 0.1.1 (2020-03-24)
+----------------------------------
+* Small packaging improvements
+
+
 fluent_compiler 0.1 (2020-03-22)
 --------------------------------
 

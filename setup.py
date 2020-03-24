@@ -9,7 +9,7 @@ else:
     old_python_requires = []
 
 setup(name='fluent_compiler',
-      version='0.1',
+      version='0.1.1',
       description='Blazing fast implementation of Fluent localization language.',
       long_description=open('README.rst').read() +
       '\n\nSee https://github.com/django-ftl/fluent-compiler/ for more info.',
