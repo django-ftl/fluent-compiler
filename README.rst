@@ -43,5 +43,5 @@ To install:
 Usage
 -----
 
-See the `docs folder <docs/>`_ or `read them on
+See the `docs folder <https://github.com/django-ftl/fluent-compiler/tree/master/docs/>`_ or `read them on
 readthedocs.org <https://fluent-compiler.readthedocs.io/en/latest/>`_.
