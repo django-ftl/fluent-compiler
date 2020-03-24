@@ -38,8 +38,6 @@ To install:
 
     pip install fluent_compiler
 
-(Hopefully soon!)
-
 Usage
 -----
 
