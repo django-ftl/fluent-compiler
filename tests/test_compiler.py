@@ -216,7 +216,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:14: Unknown external: arg'))
                     _arg = FluentNone('arg')
                     _arg_h = _arg
                 else:
@@ -244,7 +244,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:16: Unknown external: arg'))
                     _arg = FluentNone('arg')
                     _arg_h = _arg
                 else:
@@ -391,7 +391,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:9: Unknown external: arg'))
                     _arg = FluentNone('arg')
                 if _arg == 'a':
                     _ret = 'A'
@@ -442,7 +442,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:9: Unknown external: arg'))
                     _arg = FluentNone('arg')
                 if _arg == 1:
                     _ret = 'One'
@@ -478,7 +478,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['count']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: count'))
+                    errors.append(FluentReferenceError('<string>:2:9: Unknown external: count'))
                     _arg = FluentNone('count')
                 _plural_form = plural_form_for_number(_arg)
                 if _arg == 0:
@@ -521,7 +521,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:13: Unknown external: arg'))
                     _arg = FluentNone('arg')
                     _arg_h = _arg
                 else:
@@ -682,7 +682,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['a']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: a'))
+                    errors.append(FluentReferenceError('<string>:4:19: Unknown external: a'))
                     _arg = FluentNone('a')
                     _arg_h = _arg
                 else:
@@ -690,7 +690,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg2 = message_args['b']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: b'))
+                    errors.append(FluentReferenceError('<string>:4:26: Unknown external: b'))
                     _arg2 = FluentNone('b')
                     _arg_h2 = _arg2
                 else:
@@ -715,7 +715,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:9: Unknown external: arg'))
                     _arg = FluentNone('arg')
                 if _arg == 0:
                     _ret = 'You have no items'
@@ -744,13 +744,13 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['lookup']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: lookup'))
+                    errors.append(FluentReferenceError('<string>:2:9: Unknown external: lookup'))
                     _arg = FluentNone('lookup')
                 if _arg == 'a':
                     try:
                         _arg2 = message_args['arg']
                     except (LookupError, TypeError):
-                        errors.append(FluentReferenceError('Unknown external: arg'))
+                        errors.append(FluentReferenceError('<string>:3:14: Unknown external: arg'))
                         _arg2 = FluentNone('arg')
                         _arg_h = _arg2
                     else:
@@ -762,7 +762,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                     try:
                         _arg3 = message_args['arg']
                     except (LookupError, TypeError):
-                        errors.append(FluentReferenceError('Unknown external: arg'))
+                        errors.append(FluentReferenceError('<string>:5:14: Unknown external: arg'))
                         _arg3 = FluentNone('arg')
                         _arg_h2 = _arg3
                     else:
@@ -823,7 +823,7 @@ class TestCompilerEscaping(CompilerTestMixin, unittest.TestCase):
                 try:
                     _arg = message_args['arg']
                 except (LookupError, TypeError):
-                    errors.append(FluentReferenceError('Unknown external: arg'))
+                    errors.append(FluentReferenceError('<string>:2:14: Unknown external: arg'))
                     _arg = FluentNone('arg')
                     _arg_h = _arg
                 else:

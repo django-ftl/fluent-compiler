@@ -62,9 +62,9 @@ class TestMissing(unittest.TestCase):
     def test_missing_with_empty_args_dict(self):
         val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, 'arg')
-        self.assertEqual(errs, [FluentReferenceError('Unknown external: arg')])
+        self.assertEqual(errs, [FluentReferenceError('<string>:2:9: Unknown external: arg')])
 
     def test_missing_with_no_args_dict(self):
         val, errs = self.bundle.format('foo')
         self.assertEqual(val, 'arg')
-        self.assertEqual(errs, [FluentReferenceError('Unknown external: arg')])
+        self.assertEqual(errs, [FluentReferenceError('<string>:2:9: Unknown external: arg')])

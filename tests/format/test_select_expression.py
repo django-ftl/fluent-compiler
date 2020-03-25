@@ -42,7 +42,7 @@ class TestSelectExpressionWithStrings(unittest.TestCase):
         val, errs = bundle.format('foo', {})
         self.assertEqual(val, "B")
         self.assertEqual(errs,
-                         [FluentReferenceError("Unknown external: none")])
+                         [FluentReferenceError("<string>:2:9: Unknown external: none")])
 
     def test_with_argument_expression(self):
         bundle = FluentBundle.from_string('en-US', dedent_ftl("""
@@ -117,7 +117,7 @@ class TestSelectExpressionWithNumbers(unittest.TestCase):
         val, errs = self.bundle.format('baz', {})
         self.assertEqual(val, "A")
         self.assertEqual(errs,
-                         [FluentReferenceError("Unknown external: num")])
+                         [FluentReferenceError("<string>:12:9: Unknown external: num")])
 
     def test_with_argument_int(self):
         val, errs = self.bundle.format('baz', {'num': 1})
@@ -151,8 +151,8 @@ class TestSelectExpressionWithPlaceables(unittest.TestCase):
         self.assertEqual(val1, "arg")
         self.assertEqual(errs1,
                          [
-                             FluentReferenceError("Unknown external: lookup"),
-                             FluentReferenceError("Unknown external: arg"),
+                             FluentReferenceError("<string>:2:9: Unknown external: lookup"),
+                             FluentReferenceError("<string>:5:15: Unknown external: arg"),
                           ])
 
         # [a] branch, arg supplied
@@ -163,7 +163,7 @@ class TestSelectExpressionWithPlaceables(unittest.TestCase):
         # [a] branch, arg not supplied
         val3, errs3 = bundle.format('foo', {'lookup': 'a'})
         self.assertEqual(val3, "arg")
-        self.assertEqual(errs3, [FluentReferenceError("Unknown external: arg")])
+        self.assertEqual(errs3, [FluentReferenceError("<string>:3:15: Unknown external: arg")])
 
         # [b] branch
         val4, errs4 = bundle.format('foo', {'lookup': 'b'})
@@ -178,7 +178,7 @@ class TestSelectExpressionWithPlaceables(unittest.TestCase):
         # [c] branch, arg not supplied
         val6, errs6 = bundle.format('foo', {'lookup': 'c'})
         self.assertEqual(val6, "arg")
-        self.assertEqual(errs6, [FluentReferenceError("Unknown external: arg")])
+        self.assertEqual(errs6, [FluentReferenceError("<string>:5:15: Unknown external: arg")])
 
 
 class TestSelectExpressionWithPluralCategories(unittest.TestCase):
@@ -270,7 +270,7 @@ class TestSelectExpressionWithPluralCategories(unittest.TestCase):
         val, errs = self.bundle.format('foo-arg', {})
         self.assertEqual(val, "B")
         self.assertEqual(errs,
-                         [FluentReferenceError("Unknown external: count")])
+                         [FluentReferenceError("<string>:7:13: Unknown external: count")])
 
 
 class TestSelectExpressionWithTerms(unittest.TestCase):

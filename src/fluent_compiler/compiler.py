@@ -543,8 +543,10 @@ def compile_expr_term_reference(reference, block, compiler_env):
                   for kwarg in reference.arguments.named}
 
         if args:
-            args_err = FluentFormatError("Ignored positional arguments passed to term '{0}'"
-                                         .format(reference_to_id(reference)))
+            args_err = FluentFormatError(
+                "{0}: Ignored positional arguments passed to term '{1}'"
+                .format(display_ast_location(reference.arguments, compiler_env),
+                        reference_to_id(reference)))
             add_static_msg_error(block, args_err)
             compiler_env.add_current_message_error(args_err)
     else:
@@ -703,7 +705,10 @@ def compile_expr_variable_reference(argument, block, compiler_env):
                            codegen.String(name)))
     # Except block
     add_static_msg_error(try_except.except_block,
-                         FluentReferenceError("Unknown external: {0}".format(name)))
+                         FluentReferenceError(
+                             "{0}: Unknown external: {1}".format(
+                                 display_ast_location(argument, compiler_env),
+                                 name)))
     # > $arg_tmp_name = FluentNone("$name")
     try_except.except_block.add_assignment(
         arg_tmp_name,

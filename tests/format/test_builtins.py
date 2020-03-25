@@ -100,7 +100,7 @@ class TestNumberBuiltin(unittest.TestCase):
         self.assertEqual(val, "arg")
         self.assertEqual(len(errs), 1)
         self.assertEqual(errs,
-                         [FluentReferenceError('Unknown external: arg')])
+                         [FluentReferenceError('<string>:6:29: Unknown external: arg')])
 
     def test_partial_application(self):
         number = fluent_number(123456.78, currency="USD", style="currency")
