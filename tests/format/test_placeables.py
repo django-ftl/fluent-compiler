@@ -45,17 +45,17 @@ class TestPlaceables(unittest.TestCase):
     def test_placeable_message(self):
         val, errs = self.bundle.format('uses-message', {})
         self.assertEqual(val, 'Message')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_placeable_message_attr(self):
         val, errs = self.bundle.format('uses-message-attr', {})
         self.assertEqual(val, 'Message Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_placeable_term(self):
         val, errs = self.bundle.format('uses-term', {})
         self.assertEqual(val, 'Term')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_placeable_bad_message(self):
         val, errs = self.bundle.format('bad-message-ref', {})
@@ -102,10 +102,10 @@ class TestPlaceables(unittest.TestCase):
     def test_allowed_self_reference(self):
         val, errs = self.bundle.format('self-attribute-ref-ok', {})
         self.assertEqual(val, 'Parent Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
         val, errs = self.bundle.format('self-parent-ref-ok.attr', {})
         self.assertEqual(val, 'Attribute Parent')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestSingleElementPattern(unittest.TestCase):

@@ -23,22 +23,22 @@ class TestAttributesWithStringValues(unittest.TestCase):
     def test_can_be_referenced_for_entities_with_string_values(self):
         val, errs = self.bundle.format('ref-foo', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_referenced_for_entities_with_pattern_values(self):
         val, errs = self.bundle.format('ref-bar', {})
         self.assertEqual(val, 'Bar Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_formatted_directly_for_entities_with_string_values(self):
         val, errs = self.bundle.format('foo.attr', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_formatted_directly_for_entities_with_pattern_values(self):
         val, errs = self.bundle.format('bar.attr', {})
         self.assertEqual(val, 'Bar Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestAttributesWithSimplePatternValues(unittest.TestCase):
@@ -60,32 +60,32 @@ class TestAttributesWithSimplePatternValues(unittest.TestCase):
     def test_can_be_referenced_for_entities_with_string_values(self):
         val, errs = self.bundle.format('ref-bar', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_formatted_directly_for_entities_with_string_values(self):
         val, errs = self.bundle.format('bar.attr', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_referenced_for_entities_with_pattern_values(self):
         val, errs = self.bundle.format('ref-baz', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_formatted_directly_for_entities_with_pattern_values(self):
         val, errs = self.bundle.format('baz.attr', {})
         self.assertEqual(val, 'Foo Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_works_with_self_references(self):
         val, errs = self.bundle.format('ref-qux', {})
         self.assertEqual(val, 'Qux Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_works_with_self_references_direct(self):
         val, errs = self.bundle.format('qux.attr', {})
         self.assertEqual(val, 'Qux Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestMissing(unittest.TestCase):
@@ -144,7 +144,7 @@ class TestMissing(unittest.TestCase):
     def test_attr_only_attribute(self):
         val, errs = self.bundle.format('attr-only.attr', {})
         self.assertEqual(val, 'Attr Only Attribute')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_missing_message_and_attribute(self):
         val, errs = self.bundle.format('ref-double-missing', {})

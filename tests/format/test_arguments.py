@@ -23,22 +23,22 @@ class TestNumbersInValues(unittest.TestCase):
     def test_can_be_used_in_the_message_value(self):
         val, errs = self.bundle.format('foo', {'num': 3})
         self.assertEqual(val, 'Foo 3')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_used_in_the_message_value_which_is_referenced(self):
         val, errs = self.bundle.format('bar', {'num': 3})
         self.assertEqual(val, 'Foo 3')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_used_in_an_attribute(self):
         val, errs = self.bundle.format('baz.attr', {'num': 3})
         self.assertEqual(val, 'Baz Attribute 3')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_can_be_used_in_a_variant(self):
         val, errs = self.bundle.format('qux', {'num': 3})
         self.assertEqual(val, 'Baz Variant A 3')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestStrings(unittest.TestCase):
@@ -50,7 +50,7 @@ class TestStrings(unittest.TestCase):
     def test_can_be_a_string(self):
         val, errs = self.bundle.format('foo', {'arg': 'Argument'})
         self.assertEqual(val, 'Argument')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestMissing(unittest.TestCase):

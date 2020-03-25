@@ -77,32 +77,32 @@ class TestFunctionCalls(unittest.TestCase):
     def test_accepts_strings(self):
         val, errs = self.bundle.format('pass-string', {})
         self.assertEqual(val, "a")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_accepts_numbers(self):
         val, errs = self.bundle.format('pass-number', {})
         self.assertEqual(val, "1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_accepts_entities(self):
         val, errs = self.bundle.format('pass-message', {})
         self.assertEqual(val, "Foo")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_accepts_attributes(self):
         val, errs = self.bundle.format('pass-attr', {})
         self.assertEqual(val, "Attribute")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_accepts_externals(self):
         val, errs = self.bundle.format('pass-external', {'ext': 'Ext'})
         self.assertEqual(val, "Ext")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_accepts_function_calls(self):
         val, errs = self.bundle.format('pass-function-call', {})
         self.assertEqual(val, "1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_too_few_pos_args(self):
         val, errs = self.bundle.format('too-few-pos-args', {})
@@ -119,7 +119,7 @@ class TestFunctionCalls(unittest.TestCase):
     def test_good_kwarg(self):
         val, errs = self.bundle.format('use-good-kwarg')
         self.assertEqual(val, "2")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_bad_kwarg(self):
         val, errs = self.bundle.format('use-bad-kwarg')
@@ -140,12 +140,12 @@ class TestFunctionCalls(unittest.TestCase):
     def test_use_any_args(self):
         val, errs = self.bundle.format('use-any-args')
         self.assertEqual(val, "1 2 3 x=1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_restricted_ok(self):
         val, errs = self.bundle.format('use-restricted-ok')
         self.assertEqual(val, "1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_restricted_bad(self):
         val, errs = self.bundle.format('use-restricted-bad')
@@ -168,7 +168,7 @@ class TestFunctionCalls(unittest.TestCase):
     def test_non_identifier_python_keyword_args(self):
         val, errs = self.bundle.format('non-identfier-arg')
         self.assertEqual(val, '1 foo=2 non-identifier=3')
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
 
 class TestMissing(unittest.TestCase):
@@ -207,14 +207,14 @@ class TestResolving(unittest.TestCase):
     def test_args_passed_as_numbers(self):
         val, errs = self.bundle.format('pass-arg', {'arg': 1})
         self.assertEqual(val, "1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
         self.assertEqual(self.args_passed, [1])
         self.assertEqual(self.args_passed, [fluent_number(1)])
 
     def test_literals_passed_as_numbers(self):
         val, errs = self.bundle.format('pass-number', {})
         self.assertEqual(val, "1")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
         self.assertEqual(self.args_passed, [1])
         self.assertEqual(self.args_passed, [fluent_number(1)])
 
@@ -245,25 +245,25 @@ class TestKeywordArgs(unittest.TestCase):
         val, errs = self.bundle.format('pass-arg', {})
         self.assertEqual(self.args_passed,
                          [("a", None, "default")])
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_pass_kwarg1(self):
         val, errs = self.bundle.format('pass-kwarg1', {})
         self.assertEqual(self.args_passed,
                          [("a", 1, "default")])
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_pass_kwarg2(self):
         val, errs = self.bundle.format('pass-kwarg2', {})
         self.assertEqual(self.args_passed,
                          [("a", None, "other")])
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_pass_kwargs(self):
         val, errs = self.bundle.format('pass-kwargs', {})
         self.assertEqual(self.args_passed,
                          [("a", 1, "other")])
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_missing_arg(self):
         val, errs = self.bundle.format('pass-user-arg', {})

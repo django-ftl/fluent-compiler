@@ -19,7 +19,7 @@ class TestSelectExpressionWithStrings(unittest.TestCase):
         """))
         val, errs = bundle.format('foo', {})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_with_a_non_matching_selector(self):
         bundle = FluentBundle.from_string('en-US', dedent_ftl("""
@@ -30,7 +30,7 @@ class TestSelectExpressionWithStrings(unittest.TestCase):
         """))
         val, errs = bundle.format('foo', {})
         self.assertEqual(val, "B")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_with_a_missing_selector(self):
         bundle = FluentBundle.from_string('en-US', dedent_ftl("""
@@ -106,12 +106,12 @@ class TestSelectExpressionWithNumbers(unittest.TestCase):
     def test_selects_the_right_variant(self):
         val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, "B")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_with_a_non_matching_selector(self):
         val, errs = self.bundle.format('bar', {})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_with_a_missing_selector(self):
         val, errs = self.bundle.format('baz', {})
@@ -225,7 +225,7 @@ class TestSelectExpressionWithPluralCategories(unittest.TestCase):
     def test_selects_the_right_category_with_integer_static(self):
         val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_the_right_category_with_integer_runtime(self):
         val, errs = self.bundle.format('foo-arg', {'count': 1})
@@ -239,32 +239,32 @@ class TestSelectExpressionWithPluralCategories(unittest.TestCase):
     def test_selects_the_right_category_with_float_static(self):
         val, errs = self.bundle.format('qux', {})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_the_right_category_with_float_runtime(self):
         val, errs = self.bundle.format('foo-arg', {'count': 1.0})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_exact_match_static(self):
         val, errs = self.bundle.format('bar', {})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_exact_match_runtime(self):
         val, errs = self.bundle.format('bar-arg', {'count': 1})
         self.assertEqual(val, "A")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_default_with_invalid_selector_static(self):
         val, errs = self.bundle.format('baz', {})
         self.assertEqual(val, "B")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_selects_default_with_invalid_selector_runtime(self):
         val, errs = self.bundle.format('baz-arg', {'count': 'not a number'})
         self.assertEqual(val, "B")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_with_a_missing_selector(self):
         val, errs = self.bundle.format('foo-arg', {})
@@ -299,12 +299,12 @@ class TestSelectExpressionWithTerms(unittest.TestCase):
     def test_ref_term_attribute(self):
         val, errs = self.bundle.format('ref-term-attr')
         self.assertEqual(val, "Term Attribute")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_ref_term_attribute_fallback(self):
         val, errs = self.bundle.format('ref-term-attr-other')
         self.assertEqual(val, "Other")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_ref_term_attribute_missing(self):
         val, errs = self.bundle.format('ref-term-attr-missing')

@@ -29,27 +29,27 @@ class TestNumberBuiltin(unittest.TestCase):
     def test_implicit_call(self):
         val, errs = self.bundle.format('implicit-call', {})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_implicit_call2_int(self):
         val, errs = self.bundle.format('implicit-call2', {'arg': 123456})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_implicit_call2_float(self):
         val, errs = self.bundle.format('implicit-call2', {'arg': 123456.0})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_implicit_call2_decimal(self):
         val, errs = self.bundle.format('implicit-call2', {'arg': Decimal('123456.0')})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_defaults(self):
         val, errs = self.bundle.format('defaults', {})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_style_in_ftl(self):
         # style is only allowed as developer option
@@ -60,7 +60,7 @@ class TestNumberBuiltin(unittest.TestCase):
     def test_percent_style(self):
         val, errs = self.bundle.format('from-arg', {'arg': fluent_number(1.234, style="percent")})
         self.assertEqual(val, "123%")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_currency_display(self):
         val, errs = self.bundle.format(
@@ -83,17 +83,17 @@ class TestNumberBuiltin(unittest.TestCase):
     def test_from_arg_int(self):
         val, errs = self.bundle.format('from-arg', {'arg': 123456})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_from_arg_float(self):
         val, errs = self.bundle.format('from-arg', {'arg': 123456.0})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_from_arg_decimal(self):
         val, errs = self.bundle.format('from-arg', {'arg': Decimal('123456.0')})
         self.assertEqual(val, "123,456")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_from_arg_missing(self):
         val, errs = self.bundle.format('from-arg', {})
@@ -106,14 +106,14 @@ class TestNumberBuiltin(unittest.TestCase):
         number = fluent_number(123456.78, currency="USD", style="currency")
         val, errs = self.bundle.format('from-arg', {'arg': number})
         self.assertEqual(val, "$123,456.78")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_merge_params(self):
         number = fluent_number(123456.78, currency="USD", style="currency")
         val, errs = self.bundle.format('merge-params',
                                        {'arg': number})
         self.assertEqual(val, "$123456.78")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_bad_kwarg(self):
         val, errs = self.bundle.format('bad-kwarg')
@@ -140,22 +140,22 @@ class TestDatetimeBuiltin(unittest.TestCase):
     def test_implicit_call_date(self):
         val, errs = self.bundle.format('implicit-call', {'date': date(2018, 2, 1)})
         self.assertEqual(val, "Feb 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_implicit_call_datetime(self):
         val, errs = self.bundle.format('implicit-call', {'date': datetime(2018, 2, 1, 14, 15, 16)})
         self.assertEqual(val, "Feb 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_explicit_call_date(self):
         val, errs = self.bundle.format('explicit-call', {'date': date(2018, 2, 1)})
         self.assertEqual(val, "Feb 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_explicit_call_datetime(self):
         val, errs = self.bundle.format('explicit-call', {'date': datetime(2018, 2, 1, 14, 15, 16)})
         self.assertEqual(val, "Feb 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_explicit_call_date_fluent_date(self):
         val, errs = self.bundle.format('explicit-call', {'date':
@@ -164,12 +164,12 @@ class TestDatetimeBuiltin(unittest.TestCase):
                                                              dateStyle='short')
                                                          })
         self.assertEqual(val, "2/1/18")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_arg(self):
         val, errs = self.bundle.format('call-with-arg', {'date': date(2018, 2, 1)})
         self.assertEqual(val, "February 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
 
     def test_arg_overrides_fluent_date(self):
         val, errs = self.bundle.format('call-with-arg', {'date':
@@ -178,4 +178,4 @@ class TestDatetimeBuiltin(unittest.TestCase):
                                                              dateStyle='short')
                                                          })
         self.assertEqual(val, "February 1, 2018")
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(errs, [])
