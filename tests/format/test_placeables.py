@@ -63,7 +63,7 @@ class TestPlaceables(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(
             errs,
-            [FluentReferenceError("Unknown message: not-a-message")])
+            [FluentReferenceError("<string>:15:26: Unknown message: not-a-message")])
 
     def test_placeable_bad_message_attr(self):
         val, errs = self.bundle.format('bad-message-attr-ref', {})
@@ -71,7 +71,7 @@ class TestPlaceables(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(
             errs,
-            [FluentReferenceError("Unknown attribute: message.not-an-attr")])
+            [FluentReferenceError("<string>:16:31: Unknown attribute: message.not-an-attr")])
 
     def test_placeable_bad_term(self):
         val, errs = self.bundle.format('bad-term-ref', {})
@@ -79,7 +79,7 @@ class TestPlaceables(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(
             errs,
-            [FluentReferenceError("Unknown term: -not-a-term")])
+            [FluentReferenceError("<string>:17:23: Unknown term: -not-a-term")])
 
     def test_cycle_detection(self):
         val, errs = self.bundle.format('self-referencing-message', {})

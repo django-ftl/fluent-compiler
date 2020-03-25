@@ -59,6 +59,7 @@ class CurrentEnvironment(object):
     # The parts of CompilerEnvironment that we want to mutate (and restore)
     # temporarily for some parts of a call chain.
     message_id = attr.ib(default=None)
+    ftl_resource = attr.ib(default=None)
     term_args = attr.ib(default=None)
     in_select_expression = attr.ib(default=False)
     escaper = attr.ib(default=null_escaper)
@@ -245,6 +246,7 @@ def messages_to_module(messages, locale, use_isolating=True, functions=None, esc
     # Pass 2, actual compilation
     for msg_id, msg in message_ids_to_ast.items():
         with compiler_env.modified(message_id=msg_id,
+                                   ftl_resource=msg.ftl_resource,
                                    escaper=compiler_env.escaper_for_message(message_id=msg_id)):
             function_name = compiler_env.message_mapping[msg_id]
             function = compile_message(msg, msg_id, function_name, module, compiler_env)
@@ -885,11 +887,11 @@ def lookup_term_reference(ref, block, compiler_env):
     if ref.attribute:
         parent_id = reference_to_id(ref, ignore_attributes=True)
         if parent_id in compiler_env.term_ids_to_ast:
-            error = unknown_reference_error_obj(term_id)
+            error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ref, term_id)
             add_static_msg_error(block, error)
             compiler_env.add_current_message_error(error)
             return compiler_env.term_ids_to_ast[parent_id], compiler_env.escaper_for_message(parent_id), None
-    return None, None, unknown_reference(term_id, block, compiler_env)
+    return None, None, unknown_reference(ref, term_id, block, compiler_env)
 
 
 def handle_message_reference(ref, block, compiler_env):
@@ -900,11 +902,11 @@ def handle_message_reference(ref, block, compiler_env):
     if ref.attribute:
         parent_id = reference_to_id(ref, ignore_attributes=True)
         if parent_id in compiler_env.message_ids_to_ast:
-            error = unknown_reference_error_obj(msg_id)
+            error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ref, msg_id)
             add_static_msg_error(block, error)
             compiler_env.add_current_message_error(error)
             return do_message_call(parent_id, block, compiler_env)
-    return unknown_reference(msg_id, block, compiler_env)
+    return unknown_reference(ref, msg_id, block, compiler_env)
 
 
 def make_fluent_none(name, scope):
@@ -992,8 +994,8 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
     return compile_expr(found.value, block, compiler_env)
 
 
-def unknown_reference(name, block, compiler_env):
-    error = unknown_reference_error_obj(name)
+def unknown_reference(ast_node, name, block, compiler_env):
+    error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ast_node, name)
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
     return make_fluent_none(name, block.scope)

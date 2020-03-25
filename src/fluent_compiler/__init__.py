@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 from collections import OrderedDict
 
+import attr
 import babel
 import babel.numbers
 import babel.plural
@@ -11,7 +12,7 @@ from fluent.syntax.ast import Junk, Message, Term
 from .builtins import BUILTINS
 from .compiler import compile_messages
 from .errors import FluentDuplicateMessageId, FluentJunkFound
-from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL, ast_to_id
+from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL, ast_to_id, display_location, span_to_position
 
 
 class FluentBundle(object):
@@ -50,15 +51,25 @@ class FluentBundle(object):
     def from_string(cls, locale, text, functions=None, use_isolating=True, escapers=None):
         return cls(
             locale,
-            [Resource(text)],
+            [FtlResource(text)],
             use_isolating=use_isolating,
             functions=functions,
             escapers=escapers
         )
 
-    def _add_resource(self, resource):
+    @classmethod
+    def from_files(cls, locale, filenames, functions=None, use_isolating=True, escapers=None):
+        return cls(
+            locale,
+            [FtlResource.from_file(f) for f in filenames],
+            use_isolating=use_isolating,
+            functions=functions,
+            escapers=escapers
+        )
+
+    def _add_resource(self, ftl_resource):
         parser = FluentParser()
-        resource = parser.parse(resource.text)
+        resource = parser.parse(ftl_resource.text)
         for item in resource.body:
             if isinstance(item, (Message, Term)):
                 full_id = ast_to_id(item)
@@ -66,11 +77,20 @@ class FluentBundle(object):
                     self._parsing_issues.append((full_id, FluentDuplicateMessageId(
                         "Additional definition for '{0}' discarded.".format(full_id))))
                 else:
+                    # Decorate with ftl_resource for better error messages later
+                    item.ftl_resource = ftl_resource
+                    for attribute in item.attributes:
+                        attribute.ftl_resource = ftl_resource
                     self._messages_and_terms[full_id] = item
             elif isinstance(item, Junk):
                 self._parsing_issues.append(
-                    (None, FluentJunkFound("Junk found: " +
-                                           '; '.join(a.message for a in item.annotations),
+                    (None, FluentJunkFound("Junk found:\n" +
+                                           '\n'.join('  {0}: {1}'.format(
+                                               display_location(
+                                                   ftl_resource.filename,
+                                                   span_to_position(a.span, ftl_resource.text)
+                                               ), a.message)
+                                                     for a in item.annotations),
                                            item.annotations)))
 
     def has_message(self, message_id):
@@ -95,7 +115,14 @@ class FluentBundle(object):
         return self._parsing_issues + self._compilation_errors
 
 
-class Resource(object):
-    def __init__(self, text, name=None):
-        self.text = text
-        self.name = name
+@attr.s
+class FtlResource(object):
+    '''
+    Represents an (unparsed) FTL file (contents and optional filename)
+    '''
+    text = attr.ib()
+    filename = attr.ib(default=None)
+
+    @classmethod
+    def from_file(cls, filename):
+        return cls(text=open(filename).read(), filename=filename)

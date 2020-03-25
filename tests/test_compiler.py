@@ -4,7 +4,7 @@ import unittest
 
 from markupsafe import Markup, escape
 
-from fluent_compiler import FluentBundle
+from fluent_compiler import FluentBundle, FtlResource
 from fluent_compiler.compiler import messages_to_module
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.utils import SimpleNamespace
@@ -17,13 +17,15 @@ from .utils import dedent_ftl
 # the other FluentBundle.format tests.
 
 
-def compile_messages_to_python(source, locale, use_isolating=False, functions=None, escapers=None):
+def compile_messages_to_python(source, locale, use_isolating=False,
+                               functions=None, escapers=None, filename=None):
     # We use FluentBundle partially here, but then switch to
     # messages_to_module instead of compile_messages so that we can get the AST
     # back instead of a compiled function.
-    bundle = FluentBundle.from_string(
+    resource = FtlResource(dedent_ftl(source), filename=filename)
+    bundle = FluentBundle(
         locale,
-        dedent_ftl(source),
+        [resource],
         use_isolating=use_isolating,
         functions=functions,
         escapers=escapers,
@@ -153,11 +155,11 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         # into the function for the runtime error.
         self.assertCodeEqual(code, """
             def bar(message_args, errors):
-                errors.append(FluentReferenceError('Unknown message: foo'))
+                errors.append(FluentReferenceError('<string>:2:9: Unknown message: foo'))
                 return 'foo'
         """)
         # And we should get a compile time error:
-        self.assertEqual(errs, [('bar', FluentReferenceError("Unknown message: foo"))])
+        self.assertEqual(errs, [('bar', FluentReferenceError("<string>:2:9: Unknown message: foo"))])
 
     def test_name_collision_function_args(self):
         code, errs = compile_messages_to_python("""

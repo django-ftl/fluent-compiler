@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-from fluent_compiler import FluentBundle
+from fluent_compiler import FluentBundle, FtlResource
 from fluent_compiler.errors import FluentDuplicateMessageId, FluentJunkFound, FluentReferenceError
 
 from .utils import dedent_ftl
@@ -124,20 +124,28 @@ class TestFluentBundle(unittest.TestCase):
         self.assertEqual(bundle.format('foo')[0], 'Foo')
 
     def test_check_messages_junk(self):
-        bundle = FluentBundle.from_string('en-US', "unfinished")
+        bundle = FluentBundle('en-US', [FtlResource("unfinished", filename='myfile.ftl')])
         checks = bundle.check_messages()
         self.assertEqual(len(checks), 1)
         check1_name, check1_error = checks[0]
         self.assertEqual(check1_name, None)
         self.assertEqual(type(check1_error), FluentJunkFound)
-        self.assertEqual(check1_error.message, 'Junk found: Expected token: "="')
+        self.assertEqual(check1_error.message, 'Junk found:\n  myfile.ftl:1:11: Expected token: "="')
         self.assertEqual(check1_error.annotations[0].message, 'Expected token: "="')
 
     def test_check_messages_compile_errors(self):
-        bundle = FluentBundle.from_string('en-US', "foo = { -missing }")
+        bundle = FluentBundle('en-US', [FtlResource(dedent_ftl('''
+        foo = { -missing }
+            .bar = { -missing }
+        '''), filename='myfile.ftl')])
         checks = bundle.check_messages()
-        self.assertEqual(len(checks), 1)
+        self.assertEqual(len(checks), 2)
         check1_name, check1_error = checks[0]
         self.assertEqual(check1_name, 'foo')
         self.assertEqual(type(check1_error), FluentReferenceError)
-        self.assertEqual(check1_error.args[0], 'Unknown term: -missing')
+        self.assertEqual(check1_error.args[0], 'myfile.ftl:2:9: Unknown term: -missing')
+
+        check2_name, check2_error = checks[1]
+        self.assertEqual(check2_name, 'foo.bar')
+        self.assertEqual(type(check2_error), FluentReferenceError)
+        self.assertEqual(check2_error.args[0], 'myfile.ftl:3:14: Unknown term: -missing')

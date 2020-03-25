@@ -111,28 +111,28 @@ class TestMissing(unittest.TestCase):
         self.assertEqual(val, 'Foo')
         self.assertEqual(errs,
                          [FluentReferenceError(
-                             'Unknown attribute: foo.missing')])
+                             '<string>:8:13: Unknown attribute: foo.missing')])
 
     def test_falls_back_for_msg_with_string_value_and_other_attributes(self):
         val, errs = self.bundle.format('ref-bar', {})
         self.assertEqual(val, 'Bar')
         self.assertEqual(errs,
                          [FluentReferenceError(
-                             'Unknown attribute: bar.missing')])
+                             '<string>:9:13: Unknown attribute: bar.missing')])
 
     def test_falls_back_for_msg_with_pattern_value_and_no_attributes(self):
         val, errs = self.bundle.format('ref-baz', {})
         self.assertEqual(val, 'Foo Baz')
         self.assertEqual(errs,
                          [FluentReferenceError(
-                             'Unknown attribute: baz.missing')])
+                             '<string>:10:13: Unknown attribute: baz.missing')])
 
     def test_falls_back_for_msg_with_pattern_value_and_other_attributes(self):
         val, errs = self.bundle.format('ref-qux', {})
         self.assertEqual(val, 'Foo Qux')
         self.assertEqual(errs,
                          [FluentReferenceError(
-                             'Unknown attribute: qux.missing')])
+                             '<string>:11:13: Unknown attribute: qux.missing')])
 
     def test_attr_only_main(self):
         # For reference, Javascript implementation returns null for this case.
@@ -149,4 +149,4 @@ class TestMissing(unittest.TestCase):
     def test_missing_message_and_attribute(self):
         val, errs = self.bundle.format('ref-double-missing', {})
         self.assertEqual(val, 'missing.attr')
-        self.assertEqual(errs, [FluentReferenceError('Unknown attribute: missing.attr')])
+        self.assertEqual(errs, [FluentReferenceError('<string>:14:24: Unknown attribute: missing.attr')])

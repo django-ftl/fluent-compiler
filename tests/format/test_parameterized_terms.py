@@ -64,7 +64,7 @@ class TestParameterizedTerms(unittest.TestCase):
     def test_bad_term(self):
         val, errs = self.bundle.format('bad-term', {})
         self.assertEqual(val, '-missing')
-        self.assertEqual(errs, [FluentReferenceError('Unknown term: -missing')])
+        self.assertEqual(errs, [FluentReferenceError('<string>:12:14: Unknown term: -missing')])
 
 
 class TestParameterizedTermsWithNumbers(unittest.TestCase):
@@ -137,7 +137,7 @@ class TestParameterizedTermAttributes(unittest.TestCase):
         # We should fall back to the parent, and still pass the args.
         val, errs = self.bundle.format('missing-attr-ref', {})
         self.assertEqual(val, 'ABC option')
-        self.assertEqual(errs, [FluentReferenceError('Unknown attribute: -other.missing')])
+        self.assertEqual(errs, [FluentReferenceError('<string>:18:22: Unknown attribute: -other.missing')])
 
 
 class TestNestedParameterizedTerms(unittest.TestCase):
@@ -221,7 +221,7 @@ class TestTermsWithTermReferences(unittest.TestCase):
     def test_term_with_missing_term_reference(self):
         val, errs = self.bundle.format('uses-bad-term', {})
         self.assertEqual(val, 'Something wrong -missing')
-        self.assertEqual(errs, [FluentReferenceError('Unknown term: -missing',)])
+        self.assertEqual(errs, [FluentReferenceError('<string>:13:33: Unknown term: -missing',)])
 
 
 class TestTermsCalledFromTerms(unittest.TestCase):

@@ -311,4 +311,4 @@ class TestSelectExpressionWithTerms(unittest.TestCase):
         self.assertEqual(val, "Other")
         self.assertEqual(len(errs), 1)
         self.assertEqual(errs,
-                         [FluentReferenceError('Unknown attribute: -my-term.missing')])
+                         [FluentReferenceError('<string>:15:27: Unknown attribute: -my-term.missing')])

@@ -257,9 +257,23 @@ def sanitize_function_args(arg_spec, name, errors):
     return (positional_args, cleaned_kwargs)
 
 
-def unknown_reference_error_obj(ref_id):
+def unknown_reference_error_obj(source, ast_node, ref_id):
+    location = display_location(source.filename, span_to_position(ast_node.span, source.text))
     if ATTRIBUTE_SEPARATOR in ref_id:
-        return FluentReferenceError("Unknown attribute: {0}".format(ref_id))
+        return FluentReferenceError("{0}: Unknown attribute: {1}".format(location, ref_id))
     if ref_id.startswith(TERM_SIGIL):
-        return FluentReferenceError("Unknown term: {0}".format(ref_id))
-    return FluentReferenceError("Unknown message: {0}".format(ref_id))
+        return FluentReferenceError("{0}: Unknown term: {1}".format(location, ref_id))
+    return FluentReferenceError("{0}: Unknown message: {1}".format(location, ref_id))
+
+
+def span_to_position(span, source_text):
+    start = span.start
+    relevant = source_text[0:start]
+    row = relevant.count("\n") + 1
+    col = len(relevant) - relevant.rfind("\n")
+    return row, col
+
+
+def display_location(filename, position):
+    row, col = position
+    return "{0}:{1}:{2}".format(filename if filename else '<string>', row, col)
