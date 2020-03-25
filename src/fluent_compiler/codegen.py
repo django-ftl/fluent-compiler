@@ -106,7 +106,7 @@ class PythonAstList(object):
 
 
 # `compiler` needs these attributes on AST nodes.
-# We don't have anything sensible we can put here so we put arbitrary values.
+# It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
 DEFAULT_AST_ARGS = dict(lineno=1, col_offset=1)
 
 
@@ -342,11 +342,21 @@ class Module(Block, PythonAst):
     def as_ast(self):
         return ast.Module(body=self.as_ast_list(), **DEFAULT_AST_ARGS)
 
+    def as_multiple_module_ast(self):
+        retval = []
+        for item in self.as_ast_list():
+            mod = ast.Module(body=[item], **DEFAULT_AST_ARGS)
+            if hasattr(item, 'filename'):
+                # For use by compile_messages
+                mod.filename = item.filename
+            retval.append(mod)
+        return retval
+
 
 class Function(Scope, Statement, PythonAst):
     child_elements = ['body']
 
-    def __init__(self, name, args=None, parent_scope=None):
+    def __init__(self, name, args=None, parent_scope=None, source=None):
         super(Function, self).__init__(parent_scope=parent_scope)
         self.body = Block(self)
         self.func_name = name
@@ -358,6 +368,7 @@ class Function(Scope, Statement, PythonAst):
                                      .format(arg))
             self.reserve_name(arg, function_arg=True)
         self.args = args
+        self.source = source
 
     def as_ast(self):
         if not allowable_name(self.func_name):
@@ -365,7 +376,7 @@ class Function(Scope, Statement, PythonAst):
         for arg in self.args:
             if not allowable_name(arg):
                 raise AssertionError("Expected '{0}' to be a valid Python identifier".format(arg))
-        return ast.FunctionDef(
+        func_def = ast.FunctionDef(
             name=self.func_name,
             args=ast.arguments(
                 args=([ast.arg(arg=arg_name, annotation=None,
@@ -380,6 +391,9 @@ class Function(Scope, Statement, PythonAst):
             body=self.body.as_ast_list(allow_empty=False),
             decorator_list=[],
             **DEFAULT_AST_ARGS)
+        if self.source is not None and self.source.filename is not None:
+            func_def.filename = self.source.filename  # See Module.as_multiple_module_ast
+        return func_def
 
     def add_return(self, value):
         self.body.add_return(value)

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 
+import traceback
 import unittest
 
 from fluent_compiler import FluentBundle, FtlResource
 from fluent_compiler.errors import FluentDuplicateMessageId, FluentJunkFound, FluentReferenceError
+from fluent_compiler.types import FluentNumber
 
 from .utils import dedent_ftl
 
@@ -149,3 +151,34 @@ class TestFluentBundle(unittest.TestCase):
         self.assertEqual(check2_name, 'foo.bar')
         self.assertEqual(type(check2_error), FluentReferenceError)
         self.assertEqual(check2_error.args[0], 'myfile.ftl:3:14: Unknown term: -missing')
+
+    def test_tracebacks_for_exceptions(self):
+        bundle = FluentBundle('en-US', [
+            FtlResource(dedent_ftl('''
+            foo = { $arg }
+            '''), filename='firstfile.ftl'),
+            FtlResource(dedent_ftl('''
+            bar = { $arg }
+            '''), filename='secondfile.ftl')
+        ])
+        # Check what our tracebacks produce if we have an error. This is hard to
+        # do, since we catch most errors, so we construct a special value that
+        # will blow up despite our best efforts.
+
+        class BadType(FluentNumber, int):
+            def format(self, locale):
+                1 / 0
+
+        for filename, msg_id in [
+                ("firstfile.ftl", "foo"),
+                ("secondfile.ftl", "bar")
+        ]:
+            try:
+                val, errs = bundle.format(msg_id, {'arg': BadType(0)})
+            except ZeroDivisionError:
+                tb = traceback.format_exc()
+                # We don't get line numbers, but we can at least display the
+                # source FTL file and function name
+                self.assertIn('File "{0}", line 1, in {1}'.format(filename, msg_id), tb)
+            else:
+                self.fail('Expected ZeroDivisionError')

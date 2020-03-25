@@ -103,6 +103,17 @@ class CompilerEnvironment(object):
         return self.modified(term_args=term_args if term_args is not None else {})
 
 
+class FtlSource(object):
+    """
+    Object used to specify the origin of a chunk of FTL
+    """
+    def __init__(self, ast_node, ftl_resource):
+        self.ast_node = ast_node
+        self.ftl_resource = ftl_resource
+        self.filename = self.ftl_resource.filename
+        self.row, self.column = span_to_position(ast_node.span, ftl_resource.text)
+
+
 def compile_messages(messages, locale, use_isolating=True, functions=None, escapers=None):
     """
     Compile a dictionary of {id: Message/Term objects} to a Python module,
@@ -121,8 +132,20 @@ def compile_messages(messages, locale, use_isolating=True, functions=None, escap
         functions=functions,
         escapers=escapers)
 
-    code_obj = compile(module.as_ast(), '<string>', 'exec')
-    exec(code_obj, module_globals)
+    # A hack below to allow `.ftl` files to appear in tracebacks, should that
+    # ever be needed, rather than '<string>' which is rather confusing.
+
+    # To do this, we split the module into multiple modules, to allow each
+    # function to have it's own filename associated with it, because the
+    # original FTL may come from different sources.
+    for module_ast in module.as_multiple_module_ast():
+        if hasattr(module_ast.body[0], 'filename'):
+            filename = module_ast.body[0].filename
+        else:
+            filename = '<string>'
+        code_obj = compile(module_ast, filename, 'exec')
+        exec(code_obj, module_globals)
+
     retval = {}
     for key, val in message_mapping.items():
         if key.startswith(TERM_SIGIL):
@@ -286,7 +309,9 @@ def message_function_name_for_msg_id(msg_id):
 def compile_message(msg, msg_id, function_name, module, compiler_env):
     msg_func = codegen.Function(parent_scope=module.scope,
                                 name=function_name,
-                                args=MESSAGE_FUNCTION_ARGS)
+                                args=MESSAGE_FUNCTION_ARGS,
+                                source=FtlSource(msg, compiler_env.current.ftl_resource),
+                                )
     function_block = msg_func.body
     if contains_reference_cycle(msg, compiler_env):
         error = FluentCyclicReferenceError(
