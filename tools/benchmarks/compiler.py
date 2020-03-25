@@ -3,10 +3,9 @@
 # This should be run using pytest, see end of file
 from __future__ import unicode_literals
 
+import os
 import subprocess
 import sys
-import os
-
 
 from fluent_compiler import FluentBundle
 

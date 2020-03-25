@@ -2,8 +2,8 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-from fluent_compiler.utils import inspect_function_args, Any
 from fluent_compiler.errors import FluentFormatError
+from fluent_compiler.utils import Any, inspect_function_args
 
 
 class TestInspectFunctionArgs(unittest.TestCase):

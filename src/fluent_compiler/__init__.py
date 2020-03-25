@@ -5,7 +5,6 @@ from collections import OrderedDict
 import babel
 import babel.numbers
 import babel.plural
-
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import Junk, Message, Term
 
@@ -27,23 +26,39 @@ class FluentBundle(object):
     which describe their grammatical features, and can use Fluent builtins.
     See the documentation of the Fluent syntax for more information.
     """
-    def __init__(self, locales, functions=None, use_isolating=True, escapers=None):
-        self.locales = locales
+    def __init__(self, locale, resources, functions=None, use_isolating=True, escapers=None):
+        self.locale = locale
         _functions = BUILTINS.copy()
         if functions:
             _functions.update(functions)
         self._functions = _functions
         self.use_isolating = use_isolating
-        self._messages_and_terms = OrderedDict()
         self._parsing_issues = []
         self._babel_locale = self._get_babel_locale()
         self._plural_form = babel.plural.to_python(self._babel_locale.plural_form)
-        self._escapers = escapers
-        self._mark_dirty()
+        self._messages_and_terms = OrderedDict()
+        for resource in resources:
+            self._add_resource(resource)
+        self._compiled_messages, self._compilation_errors = compile_messages(
+            self._messages_and_terms,
+            self._babel_locale,
+            use_isolating=self.use_isolating,
+            functions=self._functions,
+            escapers=escapers)
 
-    def add_messages(self, source):
+    @classmethod
+    def from_string(cls, locale, text, functions=None, use_isolating=True, escapers=None):
+        return cls(
+            locale,
+            [Resource(text)],
+            use_isolating=use_isolating,
+            functions=functions,
+            escapers=escapers
+        )
+
+    def _add_resource(self, resource):
         parser = FluentParser()
-        resource = parser.parse(source)
+        resource = parser.parse(resource.text)
         for item in resource.body:
             if isinstance(item, (Message, Term)):
                 full_id = ast_to_id(item)
@@ -57,7 +72,6 @@ class FluentBundle(object):
                     (None, FluentJunkFound("Junk found: " +
                                            '; '.join(a.message for a in item.annotations),
                                            item.annotations)))
-        self._mark_dirty()
 
     def has_message(self, message_id):
         if message_id.startswith(TERM_SIGIL) or ATTRIBUTE_SEPARATOR in message_id:
@@ -65,7 +79,7 @@ class FluentBundle(object):
         return message_id in self._messages_and_terms
 
     def _get_babel_locale(self):
-        for l in self.locales:
+        for l in self.locale.split(','):
             try:
                 return babel.Locale.parse(l.replace('-', '_'))
             except babel.UnknownLocaleError:
@@ -73,40 +87,15 @@ class FluentBundle(object):
         # TODO - log error
         return babel.Locale.default()
 
-    def _mark_dirty(self):
-        self._is_dirty = True
-        # Clear out old compilation errors, they might not apply if we
-        # re-compile:
-        self._compilation_errors = []
-        self.format = self._compile_and_format
-
-    def _mark_clean(self):
-        self._is_dirty = False
-        self.format = self._format
-
-    def _compile(self):
-        self._compiled_messages, self._compilation_errors = compile_messages(
-            self._messages_and_terms,
-            self._babel_locale,
-            use_isolating=self.use_isolating,
-            functions=self._functions,
-            escapers=self._escapers)
-        self._mark_clean()
-
-    # 'format' is the hot path for many scenarios, so we try to optimize it. To
-    # avoid having to check '_is_dirty' inside 'format', we switch 'format' from
-    # '_compile_and_format' to '_format' when compilation is done. This gives us
-    # about 10% improvement for the simplest (but most common) case of an
-    # entirely static string.
-    def _compile_and_format(self, message_id, args=None):
-        self._compile()
-        return self._format(message_id, args)
-
-    def _format(self, message_id, args=None):
+    def format(self, message_id, args=None):
         errors = []
         return self._compiled_messages[message_id](args, errors), errors
 
     def check_messages(self):
-        if self._is_dirty:
-            self._compile()
         return self._parsing_issues + self._compilation_errors
+
+
+class Resource(object):
+    def __init__(self, text, name=None):
+        self.text = text
+        self.name = name

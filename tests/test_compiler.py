@@ -2,11 +2,11 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
+from markupsafe import Markup, escape
+
 from fluent_compiler import FluentBundle
 from fluent_compiler.compiler import messages_to_module
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
-from markupsafe import Markup, escape
-
 from fluent_compiler.utils import SimpleNamespace
 
 from .test_codegen import decompile_ast_list, normalize_python
@@ -21,9 +21,13 @@ def compile_messages_to_python(source, locale, use_isolating=False, functions=No
     # We use FluentBundle partially here, but then switch to
     # messages_to_module instead of compile_messages so that we can get the AST
     # back instead of a compiled function.
-    bundle = FluentBundle([locale], use_isolating=use_isolating,
-                          functions=functions, escapers=escapers)
-    bundle.add_messages(dedent_ftl(source))
+    bundle = FluentBundle.from_string(
+        locale,
+        dedent_ftl(source),
+        use_isolating=use_isolating,
+        functions=functions,
+        escapers=escapers,
+    )
     module, message_mapping, module_globals, errors = messages_to_module(
         bundle._messages_and_terms, bundle._babel_locale,
         use_isolating=bundle.use_isolating,

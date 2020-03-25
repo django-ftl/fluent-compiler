@@ -4,11 +4,11 @@
 from __future__ import unicode_literals
 
 import sys
+
 import pytest
 import six
 
 from fluent_compiler import FluentBundle
-
 
 FTL_CONTENT = """
 one = One
@@ -54,7 +54,7 @@ class TestBenchmark(object):
     def test_bundle(self, benchmark):
         def test_bundles():
             FluentBundle(['pl'], use_isolating=False)
-            FluentBundle(['fr'], use_isolating=False)
+            FluentBundle('fr', use_isolating=False)
         benchmark(test_bundles)
 
     def test_import(self, benchmark):

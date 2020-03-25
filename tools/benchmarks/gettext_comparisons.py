@@ -10,8 +10,8 @@ from gettext import translation
 
 import pytest
 import six
-
 from fluent.runtime import FluentBundle as InterpretingFluentBundle
+
 from fluent_compiler import FluentBundle as CompilingFluentBundle
 
 this_file = os.path.abspath(__file__)
@@ -94,14 +94,15 @@ def do_dummy_translation(pot_file, po_file):
 
 @pytest.fixture
 def interpreting_fluent_bundle():
-    return build_fluent_bundle(InterpretingFluentBundle)
+    # We choose 'use_isolating=False' for feature parity with gettext
+    bundle = InterpretingFluentBundle(['pl'], use_isolating=False)
+    bundle.add_messages(FTL_MESSAGES)
+    return bundle
 
 
 @pytest.fixture
 def compiling_fluent_bundle():
-    ctx = build_fluent_bundle(CompilingFluentBundle)
-    ctx._compile()
-    return ctx
+    return CompilingFluentBundle.from_string(FTL_MESSAGES, use_isolating=False)
 
 
 def build_fluent_bundle(cls):

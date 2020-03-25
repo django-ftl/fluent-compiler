@@ -1,7 +1,7 @@
 Security
 --------
 
-You should not pass un-trusted FTL code to ``FluentBundle.add_messages``. This
+You should not pass un-trusted FTL code to ``FluentBundle``. This
 is because carefully constructed messages could potentially cause large resource
 usage (CPU time and memory). The ``fluent.runtime`` implementation does have
 some protection against these attacks, although it may not be foolproof, while

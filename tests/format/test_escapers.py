@@ -4,11 +4,12 @@ import operator
 import unittest
 
 import six
-from markupsafe import Markup, escape
 from bs4 import BeautifulSoup
 from markdown import markdown
+from markupsafe import Markup, escape
 
-from .. import all_fluent_bundle_implementations
+from fluent_compiler import FluentBundle
+
 from ..utils import dedent_ftl
 
 if six.PY3:
@@ -104,7 +105,6 @@ class MarkdownEscaper(object):
         return reduce(operator.add, parts, empty_markdown)
 
 
-@all_fluent_bundle_implementations
 class TestHtmlEscaping(unittest.TestCase):
     def setUp(self):
         escaper = HtmlEscaper(self)
@@ -116,11 +116,9 @@ class TestHtmlEscaping(unittest.TestCase):
         def QUOTE(arg):
             return "\n" + "\n".join("> {0}".format(l) for l in arg.split("\n"))
 
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=True,
-                                          functions={'QUOTE': QUOTE},
-                                          escapers=[escaper])
-
-        self.ctx.add_messages(dedent_ftl("""
+        self.bundle = FluentBundle.from_string(
+            'en-US',
+            dedent_ftl("""
             not-html-message = x < y
 
             simple-html =  This is <b>great</b>.
@@ -172,115 +170,118 @@ class TestHtmlEscaping(unittest.TestCase):
             references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
 
             references-plain-variant-html = { -brand-plain(variant: "short") } is awesome
-        """))
+            """),
+            use_isolating=True,
+            functions={'QUOTE': QUOTE},
+            escapers=[escaper],
+        )
 
     def assertTypeAndValueEqual(self, val1, val2):
         self.assertEqual(val1, val2)
         self.assertEqual(type(val1), type(val2))
 
     def test_select_false(self):
-        val, errs = self.ctx.format('not-html-message')
+        val, errs = self.bundle.format('not-html-message')
         self.assertTypeAndValueEqual(val, 'x < y')
 
     def test_simple(self):
-        val, errs = self.ctx.format('simple-html')
+        val, errs = self.bundle.format('simple-html')
         self.assertTypeAndValueEqual(val, Markup('This is <b>great</b>.'))
         self.assertEqual(errs, [])
 
     def test_argument_is_escaped(self):
-        val, errs = self.ctx.format('argument-html', {'arg': 'Jack & Jill'})
+        val, errs = self.bundle.format('argument-html', {'arg': 'Jack & Jill'})
         self.assertTypeAndValueEqual(val, Markup('This <b>thing</b> is called \u2068Jack &amp; Jill\u2069.'))
         self.assertEqual(errs, [])
 
     def test_argument_already_escaped(self):
-        val, errs = self.ctx.format('argument-html', {'arg': Markup('<b>Jack</b>')})
+        val, errs = self.bundle.format('argument-html', {'arg': Markup('<b>Jack</b>')})
         self.assertTypeAndValueEqual(val, Markup('This <b>thing</b> is called \u2068<b>Jack</b>\u2069.'))
         self.assertEqual(errs, [])
 
     def test_included_html_term(self):
-        val, errs = self.ctx.format('references-html-term-html')
+        val, errs = self.bundle.format('references-html-term-html')
         self.assertTypeAndValueEqual(val, Markup('\u2068<b>Jack &amp; Jill</b>\u2069 are <b>great!</b>'))
         self.assertEqual(errs, [])
 
     def test_included_plain_term(self):
-        val, errs = self.ctx.format('references-plain-term-html')
+        val, errs = self.bundle.format('references-plain-term-html')
         self.assertTypeAndValueEqual(val, Markup('\u2068Jack &amp; Jill\u2069 are <b>great!</b>'))
         self.assertEqual(errs, [])
 
     def test_included_html_term_from_plain(self):
-        val, errs = self.ctx.format('references-html-term-plain')
+        val, errs = self.bundle.format('references-html-term-plain')
         self.assertTypeAndValueEqual(val, "\u2068-term-html\u2069 are great!")
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_compound_message(self):
-        val, errs = self.ctx.format('compound-message-html', {'arg': 'Jack & Jill'})
+        val, errs = self.bundle.format('compound-message-html', {'arg': 'Jack & Jill'})
         self.assertTypeAndValueEqual(val,
                                      Markup('A message about \u2068Jack &amp; Jill\u2069. '
                                             '\u2068This <b>thing</b> is called \u2068Jack &amp; Jill\u2069.\u2069'))
         self.assertEqual(errs, [])
 
     def test_function(self):
-        val, errs = self.ctx.format('function-html', {'text': 'Jack & Jill'})
+        val, errs = self.bundle.format('function-html', {'text': 'Jack & Jill'})
         self.assertTypeAndValueEqual(val, Markup('You said: \u2068\n&gt; Jack &amp; Jill\u2069'))
         self.assertEqual(errs, [])
 
     def test_plain_parent(self):
-        val, errs = self.ctx.format('parent-plain')
+        val, errs = self.bundle.format('parent-plain')
         self.assertTypeAndValueEqual(val, 'Some stuff')
         self.assertEqual(errs, [])
 
     def test_html_attribute(self):
-        val, errs = self.ctx.format('parent-plain.attr-html')
+        val, errs = self.bundle.format('parent-plain.attr-html')
         self.assertTypeAndValueEqual(val, Markup("Some <b>HTML</b> stuff"))
         self.assertEqual(errs, [])
 
     def test_html_message_reference_from_plain(self):
-        val, errs = self.ctx.format('references-html-message-plain')
+        val, errs = self.bundle.format('references-html-message-plain')
         self.assertTypeAndValueEqual(val, "Plain. \u2068simple-html\u2069")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     # Message attr references
     def test_html_message_attr_reference_from_plain(self):
-        val, errs = self.ctx.format('references-html-message-attr-plain')
+        val, errs = self.bundle.format('references-html-message-attr-plain')
         self.assertTypeAndValueEqual(val, "Plain. \u2068parent-plain.attr-html\u2069")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_html_message_attr_reference_from_html(self):
-        val, errs = self.ctx.format('references-html-message-attr-html')
+        val, errs = self.bundle.format('references-html-message-attr-html')
         self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. \u2068Some <b>HTML</b> stuff\u2069"))
         self.assertEqual(errs, [])
 
     def test_plain_message_attr_reference_from_html(self):
-        val, errs = self.ctx.format('references-plain-message-attr-html')
+        val, errs = self.bundle.format('references-plain-message-attr-html')
         self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. \u2068This &amp; That\u2069"))
         self.assertEqual(errs, [])
 
     # Term variant references
     def test_html_variant_from_plain(self):
-        val, errs = self.ctx.format('references-html-variant-plain')
+        val, errs = self.bundle.format('references-html-variant-plain')
         self.assertTypeAndValueEqual(val, "\u2068-brand-html\u2069 is cool")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_html_variant_from_html(self):
-        val, errs = self.ctx.format('references-html-variant-html')
+        val, errs = self.bundle.format('references-html-variant-html')
         self.assertTypeAndValueEqual(val, Markup("\u2068CoolBrand<sup>2</sup>\u2069 is cool"))
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_plain(self):
-        val, errs = self.ctx.format('references-plain-variant-plain')
+        val, errs = self.bundle.format('references-plain-variant-plain')
         self.assertTypeAndValueEqual(val, "\u2068A&B\u2069 is awesome")
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_html(self):
-        val, errs = self.ctx.format('references-plain-variant-html')
+        val, errs = self.bundle.format('references-plain-variant-html')
         self.assertTypeAndValueEqual(val, Markup("\u2068A&amp;B\u2069 is awesome"))
         self.assertEqual(errs, [])
 
 
-@all_fluent_bundle_implementations
 class TestMarkdownEscaping(unittest.TestCase):
     maxDiff = None
 
@@ -291,11 +292,9 @@ class TestMarkdownEscaping(unittest.TestCase):
         def QUOTE(arg):
             return Markdown("\n" + "\n".join("> {0}".format(l) for l in arg.split("\n")))
 
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False,
-                                          functions={'QUOTE': QUOTE},
-                                          escapers=[escaper])
-
-        self.ctx.add_messages(dedent_ftl("""
+        self.bundle = FluentBundle.from_string(
+            'en-US',
+            dedent_ftl("""
             not-md-message = **some text**
 
             simple-md =  This is **great**
@@ -345,7 +344,11 @@ class TestMarkdownEscaping(unittest.TestCase):
             references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
 
             references-plain-variant-md = { -brand-plain(variant: "short") } is awesome
-        """))
+            """),
+            use_isolating=False,
+            functions={'QUOTE': QUOTE},
+            escapers=[escaper],
+        )
 
     def test_strip_markdown(self):
         self.assertEqual(StrippedMarkdown('**Some bolded** and __italic__ text'),
@@ -358,94 +361,94 @@ class TestMarkdownEscaping(unittest.TestCase):
                          Markdown('\nA quotation\nabout something\n'))
 
     def test_select_false(self):
-        val, errs = self.ctx.format('not-md-message')
+        val, errs = self.bundle.format('not-md-message')
         self.assertEqual(val, '**some text**')
 
     def test_simple(self):
-        val, errs = self.ctx.format('simple-md')
+        val, errs = self.bundle.format('simple-md')
         self.assertEqual(val, Markdown('This is **great**'))
         self.assertEqual(errs, [])
 
     def test_argument_is_escaped(self):
-        val, errs = self.ctx.format('argument-md', {'arg': '**Jack**'})
+        val, errs = self.bundle.format('argument-md', {'arg': '**Jack**'})
         self.assertEqual(val, Markdown('This **thing** is called Jack.'))
         self.assertEqual(errs, [])
 
     def test_argument_already_escaped(self):
-        val, errs = self.ctx.format('argument-md', {'arg': Markdown('**Jack**')})
+        val, errs = self.bundle.format('argument-md', {'arg': Markdown('**Jack**')})
         self.assertEqual(val, Markdown('This **thing** is called **Jack**.'))
         self.assertEqual(errs, [])
 
     def test_included_md(self):
-        val, errs = self.ctx.format('term-md-ref-md')
+        val, errs = self.bundle.format('term-md-ref-md')
         self.assertEqual(val, Markdown('**Jack** & __Jill__ are **great!**'))
         self.assertEqual(errs, [])
 
     def test_included_plain(self):
-        val, errs = self.ctx.format('term-plain-ref-md')
+        val, errs = self.bundle.format('term-plain-ref-md')
         self.assertEqual(val, Markdown('Jack & Jill are **great!**'))
         self.assertEqual(errs, [])
 
     def test_compound_message(self):
-        val, errs = self.ctx.format('compound-message-md', {'arg': '**Jack & Jill**'})
+        val, errs = self.bundle.format('compound-message-md', {'arg': '**Jack & Jill**'})
         self.assertEqual(val, Markdown('A message about Jack & Jill. '
                                        'This **thing** is called Jack & Jill.'))
         self.assertEqual(errs, [])
 
     def test_function(self):
-        val, errs = self.ctx.format('function-md', {'text': 'Jack & Jill'})
+        val, errs = self.bundle.format('function-md', {'text': 'Jack & Jill'})
         self.assertEqual(val, Markdown('You said: \n> Jack & Jill'))
         self.assertEqual(errs, [])
 
     def test_plain_parent(self):
-        val, errs = self.ctx.format('parent-plain')
+        val, errs = self.bundle.format('parent-plain')
         self.assertEqual(val, 'Some stuff')
         self.assertEqual(errs, [])
 
     def test_md_attribute(self):
-        val, errs = self.ctx.format('parent-plain.attr-md')
+        val, errs = self.bundle.format('parent-plain.attr-md')
         self.assertEqual(val, Markdown("Some **Markdown** stuff"))
         self.assertEqual(errs, [])
 
     def test_md_message_reference_from_plain(self):
-        val, errs = self.ctx.format('references-md-message-plain')
+        val, errs = self.bundle.format('references-md-message-plain')
         self.assertEqual(val, "Plain. simple-md")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_attr_reference_from_plain(self):
-        val, errs = self.ctx.format('references-md-attr-plain')
+        val, errs = self.bundle.format('references-md-attr-plain')
         self.assertEqual(val, "Plain. parent-plain.attr-md")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_reference_from_md(self):
-        val, errs = self.ctx.format('references-md-attr-md')
+        val, errs = self.bundle.format('references-md-attr-md')
         self.assertEqual(val, Markdown("**Markdown**. Some **Markdown** stuff"))
         self.assertEqual(errs, [])
 
     def test_plain_reference_from_md(self):
-        val, errs = self.ctx.format('references-plain-attr-md')
+        val, errs = self.bundle.format('references-plain-attr-md')
         self.assertEqual(val, Markdown("**Markdown**. This and That"))
         self.assertEqual(errs, [])
 
     def test_md_variant_from_plain(self):
-        val, errs = self.ctx.format('references-md-variant-plain')
+        val, errs = self.bundle.format('references-md-variant-plain')
         self.assertEqual(val, "-brand-md is cool")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_variant_from_md(self):
-        val, errs = self.ctx.format('references-md-variant-md')
+        val, errs = self.bundle.format('references-md-variant-md')
         self.assertEqual(val, Markdown("CoolBrand **2** is cool"))
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_plain(self):
-        val, errs = self.ctx.format('references-plain-variant-plain')
+        val, errs = self.bundle.format('references-plain-variant-plain')
         self.assertEqual(val, "*A&B* is awesome")
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_md(self):
-        val, errs = self.ctx.format('references-plain-variant-md')
+        val, errs = self.bundle.format('references-plain-variant-md')
         self.assertEqual(val, Markdown("A&B is awesome"))
         self.assertEqual(errs, [])

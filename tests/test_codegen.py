@@ -8,13 +8,12 @@ import textwrap
 import unittest
 
 import six
-from fluent_compiler import codegen
-from fluent_compiler.utils import allowable_name
-
 from ast_decompiler import decompiler
 from hypothesis import given
 from hypothesis.strategies import text
 
+from fluent_compiler import codegen
+from fluent_compiler.utils import allowable_name
 
 text_type = six.text_type
 

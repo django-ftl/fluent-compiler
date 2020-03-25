@@ -261,6 +261,7 @@ class _Assignment(Statement, PythonAst):
             value=self.value.as_ast(),
             **DEFAULT_AST_ARGS)
 
+
 class Block(PythonAstList):
     child_elements = ['statements']
 

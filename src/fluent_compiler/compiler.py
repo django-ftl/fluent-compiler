@@ -1022,6 +1022,7 @@ def wrap_with_mark_escaped(codegen_ast, block, compiler_env):
                                 {},
                                 block.scope)
 
+
 # AST checking and simplification
 
 def is_DATETIME_function_call(codegen_ast):

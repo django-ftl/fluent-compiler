@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+import sys
+
 from setuptools import find_packages, setup
 
-import sys
 if sys.version_info < (3, 4):
     old_python_requires = ['singledispatch>=3.4']
 else:

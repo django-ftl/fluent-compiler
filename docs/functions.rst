@@ -13,15 +13,17 @@ You can add functions to the ones available to FTL authors by passing a
     ...            'Darwin': 'mac',
     ...            'Windows': 'windows'}.get(platform.system(), 'other')
 
-    >>> bundle = FluentBundle(['en-US'], functions={'OS': os_name})
-    >>> bundle.add_messages("""
+    >>> bundle = FluentBundle.from_string(
+    ... 'en-US', 
+    ... """
     ... welcome = { OS() ->
     ...    [linux]    Welcome to Linux
     ...    [mac]      Welcome to Mac
     ...    [windows]  Welcome to Windows
     ...   *[other]    Welcome
     ...   }
-    ... """)
+    ... """,
+    ... functions={'OS': os_name})
     >>> print(bundle.format('welcome')[0]
     Welcome to Linux
 

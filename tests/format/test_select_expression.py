@@ -2,64 +2,60 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
+from fluent_compiler import FluentBundle
 from fluent_compiler.errors import FluentReferenceError
 
-from .. import all_fluent_bundle_implementations
 from ..utils import dedent_ftl
 
 
-@all_fluent_bundle_implementations
 class TestSelectExpressionWithStrings(unittest.TestCase):
 
-    def setUp(self):
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
-
     def test_with_a_matching_selector(self):
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { "a" ->
                 [a] A
                *[b] B
              }
         """))
-        val, errs = self.ctx.format('foo', {})
+        val, errs = bundle.format('foo', {})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_with_a_non_matching_selector(self):
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { "c" ->
                 [a] A
                *[b] B
              }
         """))
-        val, errs = self.ctx.format('foo', {})
+        val, errs = bundle.format('foo', {})
         self.assertEqual(val, "B")
         self.assertEqual(len(errs), 0)
 
     def test_with_a_missing_selector(self):
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { $none ->
                 [a] A
                *[b] B
              }
         """))
-        val, errs = self.ctx.format('foo', {})
+        val, errs = bundle.format('foo', {})
         self.assertEqual(val, "B")
         self.assertEqual(errs,
                          [FluentReferenceError("Unknown external: none")])
 
     def test_with_argument_expression(self):
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { $arg ->
                 [a] A
                *[b] B
              }
         """))
-        val, errs = self.ctx.format('foo', {'arg': 'a'})
+        val, errs = bundle.format('foo', {'arg': 'a'})
         self.assertEqual(val, "A")
 
     def test_string_selector_with_plural_categories(self):
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { $arg ->
                 [something] A
                *[other] B
@@ -69,25 +65,23 @@ class TestSelectExpressionWithStrings(unittest.TestCase):
         # category match, and should work without errors when we pass
         # a string.
 
-        val, errs = self.ctx.format('foo', {'arg': 'something'})
+        val, errs = bundle.format('foo', {'arg': 'something'})
         self.assertEqual(val, "A")
         self.assertEqual(errs, [])
 
-        val2, errs2 = self.ctx.format('foo', {'arg': 'other'})
+        val2, errs2 = bundle.format('foo', {'arg': 'other'})
         self.assertEqual(val2, "B")
         self.assertEqual(errs2, [])
 
-        val3, errs3 = self.ctx.format('foo', {'arg': 'not listed'})
+        val3, errs3 = bundle.format('foo', {'arg': 'not listed'})
         self.assertEqual(val3, "B")
         self.assertEqual(errs3, [])
 
 
-@all_fluent_bundle_implementations
 class TestSelectExpressionWithNumbers(unittest.TestCase):
 
     def setUp(self):
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
-        self.ctx.add_messages(dedent_ftl("""
+        self.bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { 1 ->
                *[0] A
                 [1] B
@@ -107,49 +101,45 @@ class TestSelectExpressionWithNumbers(unittest.TestCase):
                *[0] A
                 [1] B
              }
-        """))
+        """), use_isolating=False)
 
     def test_selects_the_right_variant(self):
-        val, errs = self.ctx.format('foo', {})
+        val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, "B")
         self.assertEqual(len(errs), 0)
 
     def test_with_a_non_matching_selector(self):
-        val, errs = self.ctx.format('bar', {})
+        val, errs = self.bundle.format('bar', {})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_with_a_missing_selector(self):
-        val, errs = self.ctx.format('baz', {})
+        val, errs = self.bundle.format('baz', {})
         self.assertEqual(val, "A")
         self.assertEqual(errs,
                          [FluentReferenceError("Unknown external: num")])
 
     def test_with_argument_int(self):
-        val, errs = self.ctx.format('baz', {'num': 1})
+        val, errs = self.bundle.format('baz', {'num': 1})
         self.assertEqual(val, "B")
 
     def test_with_argument_float(self):
-        val, errs = self.ctx.format('baz', {'num': 1.0})
+        val, errs = self.bundle.format('baz', {'num': 1.0})
         self.assertEqual(val, "B")
 
     def test_with_float(self):
-        val, errs = self.ctx.format('qux', {})
+        val, errs = self.bundle.format('qux', {})
         self.assertEqual(val, "B")
 
 
-@all_fluent_bundle_implementations
 class TestSelectExpressionWithPlaceables(unittest.TestCase):
-
-    def setUp(self):
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
 
     def test_external_arguments_in_variants(self):
         # We are testing several things:
         # - that [b] variant doesn't trigger 'Unknown external: arg'
         # - some logic in compiler implementation regarding when variables are looked up,
         #   so that [a] and [c] variants both can find 'arg'.
-        self.ctx.add_messages(dedent_ftl("""
+        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { $lookup ->
                  [a]    { $arg }
                  [b]    B
@@ -157,7 +147,7 @@ class TestSelectExpressionWithPlaceables(unittest.TestCase):
              }
         """))
         # No args:
-        val1, errs1 = self.ctx.format('foo', {})
+        val1, errs1 = bundle.format('foo', {})
         self.assertEqual(val1, "arg")
         self.assertEqual(errs1,
                          [
@@ -166,37 +156,35 @@ class TestSelectExpressionWithPlaceables(unittest.TestCase):
                           ])
 
         # [a] branch, arg supplied
-        val2, errs2 = self.ctx.format('foo', {'lookup': 'a', 'arg': 'A'})
+        val2, errs2 = bundle.format('foo', {'lookup': 'a', 'arg': 'A'})
         self.assertEqual(val2, "A")
         self.assertEqual(errs2, [])
 
         # [a] branch, arg not supplied
-        val3, errs3 = self.ctx.format('foo', {'lookup': 'a'})
+        val3, errs3 = bundle.format('foo', {'lookup': 'a'})
         self.assertEqual(val3, "arg")
         self.assertEqual(errs3, [FluentReferenceError("Unknown external: arg")])
 
         # [b] branch
-        val4, errs4 = self.ctx.format('foo', {'lookup': 'b'})
+        val4, errs4 = bundle.format('foo', {'lookup': 'b'})
         self.assertEqual(val4, "B")
         self.assertEqual(errs4, [])
 
         # [c] branch, arg supplied
-        val5, errs5 = self.ctx.format('foo', {'lookup': 'c', 'arg': 'C'})
+        val5, errs5 = bundle.format('foo', {'lookup': 'c', 'arg': 'C'})
         self.assertEqual(val5, "C")
         self.assertEqual(errs5, [])
 
         # [c] branch, arg not supplied
-        val6, errs6 = self.ctx.format('foo', {'lookup': 'c'})
+        val6, errs6 = bundle.format('foo', {'lookup': 'c'})
         self.assertEqual(val6, "arg")
         self.assertEqual(errs6, [FluentReferenceError("Unknown external: arg")])
 
 
-@all_fluent_bundle_implementations
 class TestSelectExpressionWithPluralCategories(unittest.TestCase):
 
     def setUp(self):
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
-        self.ctx.add_messages(dedent_ftl("""
+        self.bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = { 1 ->
                 [one] A
                *[other] B
@@ -232,65 +220,63 @@ class TestSelectExpressionWithPluralCategories(unittest.TestCase):
                *[other] B
              }
 
-        """))
+        """), use_isolating=False)
 
     def test_selects_the_right_category_with_integer_static(self):
-        val, errs = self.ctx.format('foo', {})
+        val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_selects_the_right_category_with_integer_runtime(self):
-        val, errs = self.ctx.format('foo-arg', {'count': 1})
+        val, errs = self.bundle.format('foo-arg', {'count': 1})
         self.assertEqual(val, "A")
         self.assertEqual(errs, [])
 
-        val, errs = self.ctx.format('foo-arg', {'count': 2})
+        val, errs = self.bundle.format('foo-arg', {'count': 2})
         self.assertEqual(val, "B")
         self.assertEqual(errs, [])
 
     def test_selects_the_right_category_with_float_static(self):
-        val, errs = self.ctx.format('qux', {})
+        val, errs = self.bundle.format('qux', {})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_selects_the_right_category_with_float_runtime(self):
-        val, errs = self.ctx.format('foo-arg', {'count': 1.0})
+        val, errs = self.bundle.format('foo-arg', {'count': 1.0})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_selects_exact_match_static(self):
-        val, errs = self.ctx.format('bar', {})
+        val, errs = self.bundle.format('bar', {})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_selects_exact_match_runtime(self):
-        val, errs = self.ctx.format('bar-arg', {'count': 1})
+        val, errs = self.bundle.format('bar-arg', {'count': 1})
         self.assertEqual(val, "A")
         self.assertEqual(len(errs), 0)
 
     def test_selects_default_with_invalid_selector_static(self):
-        val, errs = self.ctx.format('baz', {})
+        val, errs = self.bundle.format('baz', {})
         self.assertEqual(val, "B")
         self.assertEqual(len(errs), 0)
 
     def test_selects_default_with_invalid_selector_runtime(self):
-        val, errs = self.ctx.format('baz-arg', {'count': 'not a number'})
+        val, errs = self.bundle.format('baz-arg', {'count': 'not a number'})
         self.assertEqual(val, "B")
         self.assertEqual(len(errs), 0)
 
     def test_with_a_missing_selector(self):
-        val, errs = self.ctx.format('foo-arg', {})
+        val, errs = self.bundle.format('foo-arg', {})
         self.assertEqual(val, "B")
         self.assertEqual(errs,
                          [FluentReferenceError("Unknown external: count")])
 
 
-@all_fluent_bundle_implementations
 class TestSelectExpressionWithTerms(unittest.TestCase):
 
     def setUp(self):
-        self.ctx = self.fluent_bundle_cls(['en-US'], use_isolating=False)
-        self.ctx.add_messages(dedent_ftl("""
+        self.bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             -my-term = term
                  .attr = termattribute
 
@@ -308,20 +294,20 @@ class TestSelectExpressionWithTerms(unittest.TestCase):
                     [x]      Term Attribute
                    *[other]  Other
             }
-        """))
+        """), use_isolating=False)
 
     def test_ref_term_attribute(self):
-        val, errs = self.ctx.format('ref-term-attr')
+        val, errs = self.bundle.format('ref-term-attr')
         self.assertEqual(val, "Term Attribute")
         self.assertEqual(len(errs), 0)
 
     def test_ref_term_attribute_fallback(self):
-        val, errs = self.ctx.format('ref-term-attr-other')
+        val, errs = self.bundle.format('ref-term-attr-other')
         self.assertEqual(val, "Other")
         self.assertEqual(len(errs), 0)
 
     def test_ref_term_attribute_missing(self):
-        val, errs = self.ctx.format('ref-term-attr-missing')
+        val, errs = self.bundle.format('ref-term-attr-missing')
         self.assertEqual(val, "Other")
         self.assertEqual(len(errs), 1)
         self.assertEqual(errs,
