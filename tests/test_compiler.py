@@ -536,10 +536,10 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """, self.locale)
         self.assertCodeEqual(code, """
             def foo(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in foo'))
+                errors.append(FluentCyclicReferenceError('<string>:2:1: Cyclic reference in foo'))
                 return '???'
         """)
-        self.assertEqual(errs, [('foo', FluentCyclicReferenceError("Cyclic reference in foo"))])
+        self.assertEqual(errs, [('foo', FluentCyclicReferenceError("<string>:2:1: Cyclic reference in foo"))])
 
     def test_cycle_detection_false_positive_1(self):
         # Test for a bug in early version of cycle detector
@@ -563,15 +563,15 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """, self.locale)
         self.assertCodeEqual(code, """
             def foo__attr1(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in foo.attr1'))
+                errors.append(FluentCyclicReferenceError('<string>:3:4: Cyclic reference in foo.attr1'))
                 return '???'
 
             def bar__attr2(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in bar.attr2'))
+                errors.append(FluentCyclicReferenceError('<string>:6:4: Cyclic reference in bar.attr2'))
                 return '???'
         """)
-        self.assertEqual(errs, [('foo.attr1', FluentCyclicReferenceError("Cyclic reference in foo.attr1")),
-                                ('bar.attr2', FluentCyclicReferenceError("Cyclic reference in bar.attr2")),
+        self.assertEqual(errs, [('foo.attr1', FluentCyclicReferenceError("<string>:3:4: Cyclic reference in foo.attr1")),
+                                ('bar.attr2', FluentCyclicReferenceError("<string>:6:4: Cyclic reference in bar.attr2")),
                                 ])
 
     def test_term_cycle_detection(self):
@@ -581,11 +581,13 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """, self.locale)
         self.assertCodeEqual(code, """
             def cyclic_term_message(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in cyclic-term-message'))
+                errors.append(
+                    FluentCyclicReferenceError('<string>:3:1: Cyclic reference in cyclic-term-message')
+                )
                 return '???'
         """)
         self.assertEqual(errs, [('cyclic-term-message',
-                                 FluentCyclicReferenceError("Cyclic reference in cyclic-term-message")),
+                                 FluentCyclicReferenceError("<string>:3:1: Cyclic reference in cyclic-term-message")),
                                 ])
 
     def test_cycle_detection_with_unknown_attr(self):
@@ -598,15 +600,15 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """, self.locale)
         self.assertCodeEqual(code, """
             def foo(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in foo'))
+                errors.append(FluentCyclicReferenceError('<string>:2:1: Cyclic reference in foo'))
                 return '???'
 
             def bar(message_args, errors):
-                errors.append(FluentCyclicReferenceError('Cyclic reference in bar'))
+                errors.append(FluentCyclicReferenceError('<string>:4:1: Cyclic reference in bar'))
                 return '???'
         """)
-        self.assertEqual(errs, [('foo', FluentCyclicReferenceError("Cyclic reference in foo")),
-                                ('bar', FluentCyclicReferenceError("Cyclic reference in bar")),
+        self.assertEqual(errs, [('foo', FluentCyclicReferenceError("<string>:2:1: Cyclic reference in foo")),
+                                ('bar', FluentCyclicReferenceError("<string>:4:1: Cyclic reference in bar")),
                                 ])
 
     def test_parameterized_terms_inlined_for_string(self):

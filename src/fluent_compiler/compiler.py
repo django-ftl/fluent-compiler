@@ -14,8 +14,8 @@ from . import codegen, runtime
 from .errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from .escapers import EscaperJoin, RegisteredEscaper, escaper_for_message, escapers_compatible, identity, null_escaper
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
-from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, inspect_function_args,
-                    reference_to_id, unknown_reference_error_obj)
+from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, display_location,
+                    inspect_function_args, reference_to_id, span_to_position)
 
 try:
     from functools import singledispatch
@@ -289,7 +289,10 @@ def compile_message(msg, msg_id, function_name, module, compiler_env):
                                 args=MESSAGE_FUNCTION_ARGS)
     function_block = msg_func.body
     if contains_reference_cycle(msg, compiler_env):
-        error = FluentCyclicReferenceError("Cyclic reference in {0}".format(msg_id))
+        error = FluentCyclicReferenceError(
+            "{0}: Cyclic reference in {1}".format(
+                display_ast_location(msg, compiler_env),
+                msg_id))
         add_static_msg_error(function_block, error)
         compiler_env.add_current_message_error(error)
         return_expression = finalize_expr_as_output_type(
@@ -887,11 +890,11 @@ def lookup_term_reference(ref, block, compiler_env):
     if ref.attribute:
         parent_id = reference_to_id(ref, ignore_attributes=True)
         if parent_id in compiler_env.term_ids_to_ast:
-            error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ref, term_id)
+            error = unknown_reference_error_obj(term_id, ref, compiler_env)
             add_static_msg_error(block, error)
             compiler_env.add_current_message_error(error)
             return compiler_env.term_ids_to_ast[parent_id], compiler_env.escaper_for_message(parent_id), None
-    return None, None, unknown_reference(ref, term_id, block, compiler_env)
+    return None, None, unknown_reference(term_id, block, ref, compiler_env)
 
 
 def handle_message_reference(ref, block, compiler_env):
@@ -902,11 +905,11 @@ def handle_message_reference(ref, block, compiler_env):
     if ref.attribute:
         parent_id = reference_to_id(ref, ignore_attributes=True)
         if parent_id in compiler_env.message_ids_to_ast:
-            error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ref, msg_id)
+            error = unknown_reference_error_obj(msg_id, ref, compiler_env)
             add_static_msg_error(block, error)
             compiler_env.add_current_message_error(error)
             return do_message_call(parent_id, block, compiler_env)
-    return unknown_reference(ref, msg_id, block, compiler_env)
+    return unknown_reference(msg_id, block, ref, compiler_env)
 
 
 def make_fluent_none(name, scope):
@@ -994,11 +997,26 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
     return compile_expr(found.value, block, compiler_env)
 
 
-def unknown_reference(ast_node, name, block, compiler_env):
-    error = unknown_reference_error_obj(compiler_env.current.ftl_resource, ast_node, name)
+def unknown_reference(name, block, ast_node, compiler_env):
+    error = unknown_reference_error_obj(name, ast_node, compiler_env)
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
     return make_fluent_none(name, block.scope)
+
+
+def display_ast_location(ast_node, compiler_env):
+    ftl_resource = compiler_env.current.ftl_resource
+    return display_location(ftl_resource.filename,
+                            span_to_position(ast_node.span, ftl_resource.text))
+
+
+def unknown_reference_error_obj(ref_id, source_ast_node, compiler_env):
+    location = display_ast_location(source_ast_node, compiler_env)
+    if ATTRIBUTE_SEPARATOR in ref_id:
+        return FluentReferenceError("{0}: Unknown attribute: {1}".format(location, ref_id))
+    if ref_id.startswith(TERM_SIGIL):
+        return FluentReferenceError("{0}: Unknown term: {1}".format(location, ref_id))
+    return FluentReferenceError("{0}: Unknown message: {1}".format(location, ref_id))
 
 
 def wrap_with_escaper(codegen_ast, block, compiler_env):
