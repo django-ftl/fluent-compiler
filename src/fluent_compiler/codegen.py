@@ -393,6 +393,13 @@ class Function(Scope, Statement, PythonAst):
             **DEFAULT_AST_ARGS)
         if self.source is not None and self.source.filename is not None:
             func_def.filename = self.source.filename  # See Module.as_multiple_module_ast
+
+            # It's hard to get good line numbers for all AST objects, but
+            # if we put the FTL line number of the main message on all nodes
+            # this gets us a lot of the benefit for a smallish cost
+            def add_lineno(node):
+                node.lineno = self.source.row
+            ast.traverse(func_def, add_lineno)
         return func_def
 
     def add_return(self, value):
@@ -780,6 +787,9 @@ def simplify(codegen_ast, simplifier):
 
 
 def rewriting_traverse(node, func):
+    '''
+    Apply 'func' to node and all sub PythonAst nodes
+    '''
     if isinstance(node, (PythonAst, PythonAstList)):
         new_node = func(node)
         if new_node is not node:

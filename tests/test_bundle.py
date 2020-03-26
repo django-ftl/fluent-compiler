@@ -158,6 +158,7 @@ class TestFluentBundle(unittest.TestCase):
             foo = { $arg }
             '''), filename='firstfile.ftl'),
             FtlResource(dedent_ftl('''
+
             bar = { $arg }
             '''), filename='secondfile.ftl')
         ])
@@ -169,9 +170,9 @@ class TestFluentBundle(unittest.TestCase):
             def format(self, locale):
                 1 / 0
 
-        for filename, msg_id in [
-                ("firstfile.ftl", "foo"),
-                ("secondfile.ftl", "bar")
+        for filename, msg_id, line_number in [
+                ("firstfile.ftl", "foo", 2),
+                ("secondfile.ftl", "bar", 3)
         ]:
             try:
                 val, errs = bundle.format(msg_id, {'arg': BadType(0)})
@@ -179,6 +180,6 @@ class TestFluentBundle(unittest.TestCase):
                 tb = traceback.format_exc()
                 # We don't get line numbers, but we can at least display the
                 # source FTL file and function name
-                self.assertIn('File "{0}", line 1, in {1}'.format(filename, msg_id), tb)
+                self.assertIn('File "{0}", line {1}, in {2}'.format(filename, line_number, msg_id), tb)
             else:
                 self.fail('Expected ZeroDivisionError')

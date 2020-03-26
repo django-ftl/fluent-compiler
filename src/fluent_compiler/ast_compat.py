@@ -90,3 +90,11 @@ else:
     Try = ast.Try
     arg = ast.arg
     keyword = ast.keyword
+
+
+def traverse(ast_node, func):
+    '''
+    Apply 'func' to ast_node (which is `ast.*` object)
+    '''
+    for node in ast.walk(ast_node):
+        func(node)
