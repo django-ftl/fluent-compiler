@@ -37,12 +37,14 @@ class FluentBundle(object):
         self._messages_and_terms = OrderedDict()
         for resource in resources:
             self._add_resource(resource)
-        self._compiled_messages, self._compilation_errors = compile_messages(
+        compiled_ftl = compile_messages(
             self._messages_and_terms,
             self._babel_locale,
             use_isolating=self.use_isolating,
             functions=self._functions,
             escapers=escapers)
+        self._compiled_messages = compiled_ftl.message_functions
+        self._compilation_errors = compiled_ftl.errors
 
     @classmethod
     def from_string(cls, locale, text, functions=None, use_isolating=True, escapers=None):

@@ -114,15 +114,22 @@ class FtlSource(object):
         self.row, self.column = span_to_position(ast_node.span, ftl_resource.text)
 
 
+@attr.s
+class CompiledFtl(object):
+    # A dictionary of message IDs to Python functions. This is the primary
+    # output that is needed to execute the FTL - the functions simply need to be
+    # called with a dictionary of external arguments, and a list to which
+    # runtime errors will be added.
+    message_functions = attr.ib(factory=dict)
+    # A list of parsing and compilation errors, where each item is
+    # (message_id or None, exception object)
+    errors = attr.ib(factory=list)
+
+
 def compile_messages(messages, locale, use_isolating=True, functions=None, escapers=None):
     """
     Compile a dictionary of {id: Message/Term objects} to a Python module,
-    and returns a tuple:
-       (dictionary mapping the message IDs to Python functions,
-        error list)
-
-    The error list is itself a list of two tuples:
-       (message id, exception object)
+    and returns a CompiledFtl objects
     """
     if functions is None:
         functions = {}
@@ -146,14 +153,17 @@ def compile_messages(messages, locale, use_isolating=True, functions=None, escap
         code_obj = compile(module_ast, filename, 'exec')
         exec(code_obj, module_globals)
 
-    retval = {}
+    message_functions = {}
     for key, val in message_mapping.items():
         if key.startswith(TERM_SIGIL):
             # term, shouldn't be in publicly available messages
             continue
-        retval[six.text_type(key)] = module_globals[val]
+        message_functions[six.text_type(key)] = module_globals[val]
 
-    return (retval, errors)
+    return CompiledFtl(
+        message_functions=message_functions,
+        errors=errors,
+    )
 
 
 def messages_to_module(messages, locale, use_isolating=True, functions=None, escapers=None):
