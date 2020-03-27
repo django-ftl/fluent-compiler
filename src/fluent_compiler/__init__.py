@@ -4,8 +4,6 @@ from collections import OrderedDict
 
 import attr
 import babel
-import babel.numbers
-import babel.plural
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import Junk, Message, Term
 
@@ -36,7 +34,6 @@ class FluentBundle(object):
         self.use_isolating = use_isolating
         self._parsing_issues = []
         self._babel_locale = self._get_babel_locale()
-        self._plural_form = babel.plural.to_python(self._babel_locale.plural_form)
         self._messages_and_terms = OrderedDict()
         for resource in resources:
             self._add_resource(resource)

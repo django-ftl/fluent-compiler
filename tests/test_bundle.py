@@ -49,37 +49,6 @@ class TestFluentBundle(unittest.TestCase):
         self.assertFalse(bundle.has_message('foo.attr'))
         self.assertFalse(bundle.has_message('foo.other-attribute'))
 
-    def test_plural_form_english_ints(self):
-        bundle = FluentBundle.from_string('en-US', '')
-        self.assertEqual(bundle._plural_form(0),
-                         'other')
-        self.assertEqual(bundle._plural_form(1),
-                         'one')
-        self.assertEqual(bundle._plural_form(2),
-                         'other')
-
-    def test_plural_form_english_floats(self):
-        bundle = FluentBundle.from_string('en-US', '')
-        self.assertEqual(bundle._plural_form(0.0),
-                         'other')
-        self.assertEqual(bundle._plural_form(1.0),
-                         'one')
-        self.assertEqual(bundle._plural_form(2.0),
-                         'other')
-        self.assertEqual(bundle._plural_form(0.5),
-                         'other')
-
-    def test_plural_form_french(self):
-        # Just spot check one other, to ensure that we
-        # are not getting the EN locale by accident or
-        bundle = FluentBundle.from_string('fr', '')
-        self.assertEqual(bundle._plural_form(0),
-                         'one')
-        self.assertEqual(bundle._plural_form(1),
-                         'one')
-        self.assertEqual(bundle._plural_form(2),
-                         'other')
-
     def test_format_args(self):
         bundle = FluentBundle.from_string('en-US', 'foo = Foo')
         val, errs = bundle.format('foo')
