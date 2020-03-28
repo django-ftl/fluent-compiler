@@ -5,7 +5,7 @@ import unittest
 from markupsafe import Markup, escape
 
 from fluent_compiler import FluentBundle, FtlResource
-from fluent_compiler.compiler import messages_to_module
+from fluent_compiler.compiler import messages_to_module, compile_messages
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.utils import SimpleNamespace
 
@@ -23,19 +23,14 @@ def compile_messages_to_python(source, locale, use_isolating=False,
     # messages_to_module instead of compile_messages so that we can get the AST
     # back instead of a compiled function.
     resource = FtlResource(dedent_ftl(source), filename=filename)
-    bundle = FluentBundle(
-        locale,
+    output = compile_messages(
         [resource],
+        locale,
         use_isolating=use_isolating,
         functions=functions,
         escapers=escapers,
     )
-    module, message_mapping, module_globals, errors = messages_to_module(
-        bundle._messages_and_terms, bundle._babel_locale,
-        use_isolating=bundle.use_isolating,
-        functions=bundle._functions,
-        escapers=escapers)
-    return decompile_ast_list([module.as_ast()]), errors
+    return decompile_ast_list([output.module_ast]), output.errors
 
 
 class CompilerTestMixin(object):

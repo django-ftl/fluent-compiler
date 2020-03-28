@@ -12,16 +12,6 @@ from .utils import dedent_ftl
 
 
 class TestFluentBundle(unittest.TestCase):
-    def test_from_string(self):
-        bundle = FluentBundle.from_string('en-US', dedent_ftl("""
-            foo = Foo
-            bar = Bar
-            -baz = Baz
-        """))
-        self.assertIn('foo', bundle._messages_and_terms)
-        self.assertIn('bar', bundle._messages_and_terms)
-        self.assertIn('-baz', bundle._messages_and_terms)
-
     def test_has_message(self):
         bundle = FluentBundle.from_string('en-US', dedent_ftl("""
             foo = Foo
@@ -30,7 +20,6 @@ class TestFluentBundle(unittest.TestCase):
 
         self.assertTrue(bundle.has_message('foo'))
         self.assertFalse(bundle.has_message('bar'))
-        self.assertFalse(bundle.has_message('-term'))
 
     def test_has_message_for_term(self):
         bundle = FluentBundle.from_string('en-US', dedent_ftl("""

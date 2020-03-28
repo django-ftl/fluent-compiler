@@ -6,12 +6,15 @@ from collections import OrderedDict
 import attr
 import babel
 import six
-from fluent.syntax.ast import (Attribute, BaseNode, FunctionReference, Identifier, Message, MessageReference,
+from fluent.syntax import FluentParser
+from fluent.syntax.ast import (Attribute, BaseNode, FunctionReference, Identifier, Junk, Message, MessageReference,
                                NumberLiteral, Pattern, Placeable, SelectExpression, StringLiteral, Term, TermReference,
                                TextElement, VariableReference)
 
 from . import codegen, runtime
-from .errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
+from .builtins import BUILTINS
+from .errors import (FluentCyclicReferenceError, FluentDuplicateMessageId, FluentFormatError, FluentJunkFound,
+                     FluentReferenceError)
 from .escapers import EscaperJoin, RegisteredEscaper, escaper_for_message, escapers_compatible, identity, null_escaper
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, display_location,
@@ -125,18 +128,25 @@ class CompiledFtl(object):
     # (message_id or None, exception object)
     errors = attr.ib(factory=list)
 
+    # Compiled output as Python AST.
+    module_ast = attr.ib(default=None)
 
-def compile_messages(messages, locale, use_isolating=True, functions=None, escapers=None):
+
+def compile_messages(resources, locale, use_isolating=True, functions=None, escapers=None):
     """
-    Compile a dictionary of {id: Message/Term objects} to a Python module,
+    Compile a list of FtlResource to a Python module,
     and returns a CompiledFtl objects
     """
-    if functions is None:
-        functions = {}
-    module, message_mapping, module_globals, errors = messages_to_module(
-        messages, locale,
+    _functions = BUILTINS.copy()
+    if functions:
+        _functions.update(functions)
+    messages, parsing_issues = _parse_resources(resources)
+
+    babel_locale = babel.Locale.parse(locale.replace('-', '_'))
+    module, message_mapping, module_globals, compilation_errors = messages_to_module(
+        messages, babel_locale,
         use_isolating=use_isolating,
-        functions=functions,
+        functions=_functions,
         escapers=escapers)
 
     # A hack below to allow `.ftl` files to appear in tracebacks, should that
@@ -162,8 +172,40 @@ def compile_messages(messages, locale, use_isolating=True, functions=None, escap
 
     return CompiledFtl(
         message_functions=message_functions,
-        errors=errors,
+        errors=parsing_issues + compilation_errors,
+        module_ast=module.as_ast(),
     )
+
+
+def _parse_resources(ftl_resources):
+    parsing_issues = []
+    output_dict = OrderedDict()
+    for ftl_resource in ftl_resources:
+        parser = FluentParser()
+        resource = parser.parse(ftl_resource.text)
+        for item in resource.body:
+            if isinstance(item, (Message, Term)):
+                full_id = ast_to_id(item)
+                if full_id in output_dict:
+                    parsing_issues.append((full_id, FluentDuplicateMessageId(
+                        "Additional definition for '{0}' discarded.".format(full_id))))
+                else:
+                    # Decorate with ftl_resource for better error messages later
+                    item.ftl_resource = ftl_resource
+                    for attribute in item.attributes:
+                        attribute.ftl_resource = ftl_resource
+                    output_dict[full_id] = item
+            elif isinstance(item, Junk):
+                parsing_issues.append(
+                    (None, FluentJunkFound("Junk found:\n" +
+                                           '\n'.join('  {0}: {1}'.format(
+                                               display_location(
+                                                   ftl_resource.filename,
+                                                   span_to_position(a.span, ftl_resource.text)
+                                               ), a.message)
+                                                     for a in item.annotations),
+                                           item.annotations)))
+    return output_dict, parsing_issues
 
 
 def messages_to_module(messages, locale, use_isolating=True, functions=None, escapers=None):
