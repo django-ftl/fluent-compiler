@@ -102,14 +102,7 @@ def interpreting_fluent_bundle():
 
 @pytest.fixture
 def compiling_fluent_bundle():
-    return CompilingFluentBundle.from_string(FTL_MESSAGES, use_isolating=False)
-
-
-def build_fluent_bundle(cls):
-    # We choose 'use_isolating=False' for feature parity with gettext
-    ctx = cls(['pl'], use_isolating=False)
-    ctx.add_messages(FTL_MESSAGES)
-    return ctx
+    return CompilingFluentBundle.from_string('pl', FTL_MESSAGES, use_isolating=False)
 
 
 def unicode_gettext_method(gettext_translations):

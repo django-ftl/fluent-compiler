@@ -33,7 +33,7 @@ setup(name='fluent_compiler',
       package_dir={'': 'src'},
       # These should also be duplicated in tox.ini and ../.travis.yml
       install_requires=[
-          'fluent.syntax>=0.14,<=0.16',
+          'fluent.syntax>=0.14',
           'attrs>=19.3.0',
           'babel>=2.8.0',
           'pytz',
