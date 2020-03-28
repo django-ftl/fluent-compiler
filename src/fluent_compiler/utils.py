@@ -4,14 +4,11 @@ import inspect
 import keyword
 import re
 import sys
-from datetime import date, datetime
-from decimal import Decimal
 
 import six
 from fluent.syntax.ast import Term, TermReference
 
-from .errors import FluentFormatError, FluentReferenceError
-from .types import FluentDate, FluentDateTime, FluentDecimal, FluentFloat, FluentInt
+from .errors import FluentFormatError
 
 TERM_SIGIL = '-'
 ATTRIBUTE_SEPARATOR = '.'

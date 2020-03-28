@@ -43,7 +43,10 @@ class TestParameterizedTerms(unittest.TestCase):
     def test_positional_arg(self):
         val, errs = self.bundle.format('thing-positional-arg', {})
         self.assertEqual(val, 'the thing')
-        self.assertEqual(errs, [FluentFormatError("<string>:10:32: Ignored positional arguments passed to term '-thing'")])
+        self.assertEqual(
+            errs,
+            [FluentFormatError("<string>:10:32: Ignored positional arguments passed to term '-thing'")]
+        )
 
     def test_fallback(self):
         val, errs = self.bundle.format('thing-fallback', {})

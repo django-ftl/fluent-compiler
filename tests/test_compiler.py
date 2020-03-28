@@ -4,8 +4,8 @@ import unittest
 
 from markupsafe import Markup, escape
 
-from fluent_compiler import FluentBundle, FtlResource
-from fluent_compiler.compiler import messages_to_module, compile_messages
+from fluent_compiler import FtlResource
+from fluent_compiler.compiler import compile_messages
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.utils import SimpleNamespace
 
@@ -565,9 +565,12 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 errors.append(FluentCyclicReferenceError('<string>:6:4: Cyclic reference in bar.attr2'))
                 return '???'
         """)
-        self.assertEqual(errs, [('foo.attr1', FluentCyclicReferenceError("<string>:3:4: Cyclic reference in foo.attr1")),
-                                ('bar.attr2', FluentCyclicReferenceError("<string>:6:4: Cyclic reference in bar.attr2")),
-                                ])
+        self.assertEqual(
+            errs,
+            [
+                ('foo.attr1', FluentCyclicReferenceError("<string>:3:4: Cyclic reference in foo.attr1")),
+                ('bar.attr2', FluentCyclicReferenceError("<string>:6:4: Cyclic reference in bar.attr2")),
+            ])
 
     def test_term_cycle_detection(self):
         code, errs = compile_messages_to_python("""
@@ -581,9 +584,12 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 )
                 return '???'
         """)
-        self.assertEqual(errs, [('cyclic-term-message',
-                                 FluentCyclicReferenceError("<string>:3:1: Cyclic reference in cyclic-term-message")),
-                                ])
+        self.assertEqual(
+            errs,
+            [
+                ('cyclic-term-message',
+                 FluentCyclicReferenceError("<string>:3:1: Cyclic reference in cyclic-term-message")),
+            ])
 
     def test_cycle_detection_with_unknown_attr(self):
         # unknown attributes fall back to main message, which brings
