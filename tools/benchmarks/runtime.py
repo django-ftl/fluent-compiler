@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Benchmarks for runtime speed of fluent_compiler (i.e. speed of output), with
+# comparisons to gettext and fluent.runtime implementation
+
 # This should be run using pytest, see end of file
 from __future__ import unicode_literals
 
