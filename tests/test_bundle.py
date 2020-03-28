@@ -4,7 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import traceback
 import unittest
 
-from fluent_compiler import FluentBundle, FtlResource
+from fluent_compiler.bundle import FluentBundle, FtlResource
 from fluent_compiler.errors import FluentDuplicateMessageId, FluentJunkFound, FluentReferenceError
 from fluent_compiler.types import FluentNumber
 

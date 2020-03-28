@@ -4,7 +4,7 @@ import unittest
 from datetime import date, datetime
 from decimal import Decimal
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 from fluent_compiler.errors import FluentReferenceError
 from fluent_compiler.types import fluent_date, fluent_number
 

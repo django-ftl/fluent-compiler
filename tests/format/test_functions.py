@@ -4,7 +4,7 @@ import unittest
 
 import six
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 from fluent_compiler.errors import FluentReferenceError
 from fluent_compiler.types import FluentNone, fluent_number
 

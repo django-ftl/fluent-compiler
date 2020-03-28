@@ -6,9 +6,8 @@ from __future__ import unicode_literals
 import sys
 
 import pytest
-import six
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 
 FTL_CONTENT = """
 one = One
@@ -66,5 +65,5 @@ class TestBenchmark(object):
             ]
             for k in fluent_deps:
                 del sys.modules[k]
-            from fluent_compiler import FluentBundle  # noqa
+            from fluent_compiler.bundle import FluentBundle  # noqa
         benchmark(test_imports)

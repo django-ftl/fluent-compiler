@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 
 this_file = os.path.abspath(__file__)
 this_dir = os.path.dirname(this_file)

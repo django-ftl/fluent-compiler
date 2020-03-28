@@ -4,8 +4,7 @@ import unittest
 
 from markupsafe import Markup, escape
 
-from fluent_compiler import FtlResource
-from fluent_compiler.compiler import compile_messages
+from fluent_compiler.compiler import compile_messages, FtlResource
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.utils import SimpleNamespace
 

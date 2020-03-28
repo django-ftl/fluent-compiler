@@ -27,7 +27,7 @@ Once you have some FTL files, you can generate translations using the
 
 .. code-block:: python
 
-    >>> from fluent_compiler import FluentBundle
+    >>> from fluent_compiler.bundle import FluentBundle
 
 You pass a list of locales to the constructor - the first being the
 desired locale, with fallbacks after that:

@@ -58,6 +58,23 @@ PROPERTY_EXTERNAL_ARG = 'PROPERTY_EXTERNAL_ARG'
 
 
 @attr.s
+class FtlResource(object):
+    '''
+    Represents an (unparsed) FTL file (contents and optional filename)
+    '''
+    text = attr.ib()
+    filename = attr.ib(default=None)
+
+    @classmethod
+    def from_string(cls, text):
+        return cls(text)
+
+    @classmethod
+    def from_file(cls, filename):
+        return cls(text=open(filename).read(), filename=filename)
+
+
+@attr.s
 class CurrentEnvironment(object):
     # The parts of CompilerEnvironment that we want to mutate (and restore)
     # temporarily for some parts of a call chain.

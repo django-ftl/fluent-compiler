@@ -5,7 +5,7 @@ import unittest
 
 import six
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 
 from ..utils import dedent_ftl
 

@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from markdown import markdown
 from markupsafe import Markup, escape
 
-from fluent_compiler import FluentBundle
+from fluent_compiler.bundle import FluentBundle
 
 from ..utils import dedent_ftl
 
