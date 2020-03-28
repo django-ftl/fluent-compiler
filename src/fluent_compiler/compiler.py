@@ -16,6 +16,7 @@ from .builtins import BUILTINS
 from .errors import (FluentCyclicReferenceError, FluentDuplicateMessageId, FluentFormatError, FluentJunkFound,
                      FluentReferenceError)
 from .escapers import EscaperJoin, RegisteredEscaper, escaper_for_message, escapers_compatible, identity, null_escaper
+from .resource import FtlResource
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, display_location,
                     inspect_function_args, reference_to_id, span_to_position)
@@ -55,23 +56,6 @@ CLDR_PLURAL_FORMS = set([
     'other',
 ])
 PROPERTY_EXTERNAL_ARG = 'PROPERTY_EXTERNAL_ARG'
-
-
-@attr.s
-class FtlResource(object):
-    '''
-    Represents an (unparsed) FTL file (contents and optional filename)
-    '''
-    text = attr.ib()
-    filename = attr.ib(default=None)
-
-    @classmethod
-    def from_string(cls, text):
-        return cls(text)
-
-    @classmethod
-    def from_file(cls, filename):
-        return cls(text=open(filename).read(), filename=filename)
 
 
 @attr.s

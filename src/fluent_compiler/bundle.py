@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
-from .compiler import compile_messages, FtlResource
+from .compiler import compile_messages
+from .resource import FtlResource
 from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL
 
 
