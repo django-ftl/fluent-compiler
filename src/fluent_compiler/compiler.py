@@ -132,6 +132,8 @@ class CompiledFtl(object):
     # Compiled output as Python AST.
     module_ast = attr.ib(default=None)
 
+    locale = attr.ib(default=None)
+
 
 def compile_messages(resources, locale, use_isolating=True, functions=None, escapers=None):
     """
@@ -175,6 +177,7 @@ def compile_messages(resources, locale, use_isolating=True, functions=None, esca
         message_functions=message_functions,
         errors=parsing_issues + compilation_errors,
         module_ast=module.as_ast(),
+        locale=locale,
     )
 
 
