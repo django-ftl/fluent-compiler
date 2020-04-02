@@ -1,8 +1,8 @@
 Changelog
 =========
 
-fluent_compiler 0.2 (under development)
----------------------------------------
+fluent_compiler 0.2 (2020-04-02)
+--------------------------------
 * New :class:`fluent_compiler.bundle.FluentBundle` API - **backwards
   incompatible**. In this release, we are diverging from the ``fluent.runtime``
   0.1 interface to make something that better suits both our implementation and
