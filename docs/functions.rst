@@ -2,7 +2,8 @@ Custom functions
 ----------------
 
 You can add functions to the ones available to FTL authors by passing a
-``functions`` dictionary to the ``FluentBundle`` constructor:
+``functions`` dictionary to the ``FluentBundle`` constructor or to
+``compile_messages``:
 
 .. code-block:: python
 
@@ -14,7 +15,7 @@ You can add functions to the ones available to FTL authors by passing a
     ...            'Windows': 'windows'}.get(platform.system(), 'other')
 
     >>> bundle = FluentBundle.from_string(
-    ... 'en-US', 
+    ... 'en-US',
     ... """
     ... welcome = { OS() ->
     ...    [linux]    Welcome to Linux
@@ -44,12 +45,17 @@ passed as arguments:
   - ``FluentNone`` - in error conditions, such as a message referring to an
     argument that hasn't been passed in, objects of this type are passed in.
 
-Custom functions should not throw errors, but return ``FluentNone`` instances to
+Custom functions should not raise exceptions, but return ``FluentNone`` instances to
 indicate an error or missing data. Otherwise they should return unicode strings,
 or instances of a ``FluentType`` subclass as above. Returned numbers and
 datetimes should be converted to ``FluentNumber`` or ``FluentDateType``
 subclasses using ``fluent.types.fluent_number`` and ``fluent.types.fluent_date``
 respectively.
+
+If your function does raise exceptions ``fluent_compiler`` will not catch them -
+they will propagate up and cause the formatting of the message to raise that
+exception. This is intended behaviour, to aid debugging of the broken custom
+function.
 
 The type signatures of custom functions are checked before they are used, to
 ensure the right the number of positional arguments are used, and only available

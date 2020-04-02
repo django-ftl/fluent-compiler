@@ -1,7 +1,7 @@
 Escaping and markup
 -------------------
 
-In some cases it is common to to have other kinds of markup mixed in to
+In some cases it is common to have other kinds of markup mixed in with
 translatable text, especially for things like HTML/web outputs. Handling these
 requires extra functionality to ensure that everything is escaped properly,
 especially external arguments that are passed in.
@@ -15,12 +15,12 @@ In this situation, it is important that ``$name`` is HTML-escaped. The rest of
 the text needs to be treated as already escaped (i.e. it is HTML markup), so
 that ``<b>`` is not changed to ``&lt;b&gt;``.
 
-python-fluent supports this use case by allowing a list of ``escapers`` to be
-passed to the ``FluentBundle`` constructor:
+fluent-compiler supports this use case by allowing a list of ``escapers`` to be
+passed to the ``FluentBundle`` constructor or to ``compile_messages``.
 
 .. code-block:: python
 
-   bundle = FluentBundle(['en'], escapers=[my_escaper])
+   bundle = FluentBundle('en', resources, escapers=[my_escaper])
 
 An ``escaper`` is an object that defines the following set of attributes. The
 object could be a module, or a simple namespace object you could create using

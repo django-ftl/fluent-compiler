@@ -15,6 +15,7 @@ significant changes.
 
    installation
    usage
+   api/index
    functions
    errors
    escaping
