@@ -10,7 +10,7 @@ It provides a different implementation from the official
 implementation, distinguished mainly by:
 
 - strategy: we compile FTL files to Python code via AST and ``exec`` it (similar
-  to the strategy used by projects like Mako, Jinja2 and Genshi.
+  to the strategy used by projects like Mako, Jinja2 and Genshi).
 - speed: as a result of the above, plus optimizations, we get blazing
   fast performance, especially when combined with PyPy which can
   further optimize.
