@@ -14,6 +14,7 @@ from gettext import translation
 import pytest
 import six
 from fluent.runtime import FluentBundle as InterpretingFluentBundle
+from fluent.runtime import FluentResource
 
 from fluent_compiler.bundle import FluentBundle as CompilingFluentBundle
 
@@ -99,7 +100,7 @@ def do_dummy_translation(pot_file, po_file):
 def interpreting_fluent_bundle():
     # We choose 'use_isolating=False' for feature parity with gettext
     bundle = InterpretingFluentBundle(['pl'], use_isolating=False)
-    bundle.add_messages(FTL_MESSAGES)
+    bundle.add_resource(FluentResource(FTL_MESSAGES))
     return bundle
 
 
@@ -129,8 +130,22 @@ def test_single_string_gettext(gettext_translations, benchmark):
     assert type(result) is six.text_type
 
 
+def test_single_string_fluent_interpreter_cached(interpreting_fluent_bundle, benchmark):
+    # `format_pattern` is very awkward pattern for performance, but we assume
+    # that we can cache `get_message` return value somewhere, to give best
+    # possible chance to it.
+    message_val = interpreting_fluent_bundle.get_message('single-string-literal').value
+    result = benchmark(interpreting_fluent_bundle.format_pattern, message_val)
+    assert result[0] == "Hello I am a single string literal in Polish"
+    assert type(result[0]) is six.text_type
+
+
 def test_single_string_fluent_interpreter(interpreting_fluent_bundle, benchmark):
-    result = benchmark(interpreting_fluent_bundle.format, 'single-string-literal')
+    # Without caching
+    result = benchmark(
+        lambda: interpreting_fluent_bundle.format_pattern(
+            interpreting_fluent_bundle.get_message('single-string-literal').value)
+    )
     assert result[0] == "Hello I am a single string literal in Polish"
     assert type(result[0]) is six.text_type
 
@@ -152,7 +167,11 @@ def test_single_interpolation_gettext(gettext_translations, benchmark):
 
 def test_single_interpolation_fluent_interpreter(interpreting_fluent_bundle, benchmark):
     args = {'username': 'Mary'}
-    result = benchmark(interpreting_fluent_bundle.format, 'single-interpolation', args)
+    result = benchmark(
+        lambda: interpreting_fluent_bundle.format_pattern(
+            interpreting_fluent_bundle.get_message('single-interpolation').value,
+            args)
+    )
     assert result[0] == "Hello Mary, welcome to our website! in Polish"
     assert type(result[0]) is six.text_type
 
@@ -176,17 +195,20 @@ def test_plural_form_select_gettext(gettext_translations, benchmark):
 
 
 def test_plural_form_select_fluent_compiler(compiling_fluent_bundle, benchmark):
-    return _test_plural_form_select_fluent(compiling_fluent_bundle, benchmark)
+    def f():
+        for i in range(0, 10):
+            compiling_fluent_bundle.format("plural-form-select", {'count': i})
+
+    benchmark(f)
 
 
 def test_plural_form_select_fluent_interpreter(interpreting_fluent_bundle, benchmark):
-    return _test_plural_form_select_fluent(interpreting_fluent_bundle, benchmark)
-
-
-def _test_plural_form_select_fluent(ctx, benchmark):
     def f():
         for i in range(0, 10):
-            ctx.format("plural-form-select", {'count': i})[0]
+            interpreting_fluent_bundle.format_pattern(
+                interpreting_fluent_bundle.get_message("plural-form-select").value,
+                {'count': i}
+            )
 
     benchmark(f)
 

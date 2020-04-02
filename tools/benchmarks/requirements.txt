@@ -1,4 +1,4 @@
 pytest
 pytest-benchmark
-fluent.runtime==0.2
+fluent.runtime==0.3
 fluent.syntax==0.17
