@@ -1,6 +1,14 @@
 fluent-compiler
 ===============
 
+
+.. image:: https://badge.fury.io/py/fluent-compiler.svg
+    :target: https://badge.fury.io/py/fluent-compiler
+
+.. image:: https://readthedocs.org/projects/fluent-compiler/badge/?version=latest&style=flat
+   :target: https://fluent-compiler.readthedocs.io
+
+
 This is a Python implementation of Project Fluent, a localization
 framework designed to unleash the entire expressive power of natural
 language translations.
@@ -44,7 +52,7 @@ of ``django-ftl`` for a long time, but without many users.
 We are not planning major backwards incompatible changes to the interface, but
 we're not guaranteeing stability yet. Also, the nature of the library is such
 that we expect most users will want to create their own wrappers anyway, which
-you are encouraged to do, it order to be able to absorb any backwards
+you are encouraged to do, in order to be able to absorb any backwards
 incompatible changes easily.
 
 See the `issues list <https://github.com/django-ftl/fluent-compiler/issues>`_
@@ -55,4 +63,9 @@ Background
 
 This code was originally developed as part of ``fluent.runtime``, as an
 alternative implementation of ``FluentBundle``, but never got merged to the
-master branch. It has now been pulled out as a separate package.
+master branch. It has now been pulled out as a separate package. This is why
+the repo's history contains `fluent.syntax` and early versions of `fluent.runtime`,
+but the parts that are left in this repo all derive from the original version
+of `fluent.runtime` contributed by @spookylukey from `a540993a085e36a9679e12f1ee7317ddc1ece5ad <https://github.com/django-ftl/fluent-compiler/commit/a540993a085e36a9679e12f1ee7317ddc1ece5ad>`_ onwards and the new compiler implementation in `d1481d61e0bc1a28a228a4b6d5258350d436e765 <https://github.com/django-ftl/fluent-compiler/commit/d1481d61e0bc1a28a228a4b6d5258350d436e765>`_ (which is squashed version of work done over a much longer period). Thats why
+we also `corrected <https://github.com/django-ftl/fluent-compiler/commit/33c1b5b586858132d3ab7af749c2bde1bb5205b5>`_ 
+the copyright notice from Mozilla to Luke Plant.
