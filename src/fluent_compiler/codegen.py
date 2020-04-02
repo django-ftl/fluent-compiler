@@ -340,12 +340,12 @@ class Module(Block, PythonAst):
         Block.__init__(self, scope)
 
     def as_ast(self):
-        return ast.Module(body=self.as_ast_list(), **DEFAULT_AST_ARGS)
+        return ast.Module(body=self.as_ast_list(), type_ignores=[], **DEFAULT_AST_ARGS)
 
     def as_multiple_module_ast(self):
         retval = []
         for item in self.as_ast_list():
-            mod = ast.Module(body=[item], **DEFAULT_AST_ARGS)
+            mod = ast.Module(body=[item], type_ignores=[], **DEFAULT_AST_ARGS)
             if hasattr(item, 'filename'):
                 # For use by compile_messages
                 mod.filename = item.filename
@@ -379,6 +379,7 @@ class Function(Scope, Statement, PythonAst):
         func_def = ast.FunctionDef(
             name=self.func_name,
             args=ast.arguments(
+                posonlyargs=[],
                 args=([ast.arg(arg=arg_name, annotation=None,
                                **DEFAULT_AST_ARGS)
                        for arg_name in self.args]),
