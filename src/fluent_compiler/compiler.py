@@ -16,7 +16,6 @@ from .builtins import BUILTINS
 from .errors import (FluentCyclicReferenceError, FluentDuplicateMessageId, FluentFormatError, FluentJunkFound,
                      FluentReferenceError)
 from .escapers import EscaperJoin, RegisteredEscaper, escaper_for_message, escapers_compatible, identity, null_escaper
-from .resource import FtlResource
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, display_location,
                     inspect_function_args, reference_to_id, span_to_position)
@@ -135,7 +134,7 @@ class CompiledFtl(object):
     locale = attr.ib(default=None)
 
 
-def compile_messages(resources, locale, use_isolating=True, functions=None, escapers=None):
+def compile_messages(locale, resources, use_isolating=True, functions=None, escapers=None):
     """
     Compile a list of FtlResource to a Python module,
     and returns a CompiledFtl objects

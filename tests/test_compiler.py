@@ -4,9 +4,10 @@ import unittest
 
 from markupsafe import Markup, escape
 
-from fluent_compiler.compiler import compile_messages, FtlResource
+from fluent_compiler.compiler import compile_messages
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.utils import SimpleNamespace
+from fluent_compiler.resource import FtlResource
 
 from .test_codegen import decompile_ast_list, normalize_python
 from .utils import dedent_ftl
@@ -23,8 +24,8 @@ def compile_messages_to_python(source, locale, use_isolating=False,
     # back instead of a compiled function.
     resource = FtlResource(dedent_ftl(source), filename=filename)
     output = compile_messages(
-        [resource],
         locale,
+        [resource],
         use_isolating=use_isolating,
         functions=functions,
         escapers=escapers,

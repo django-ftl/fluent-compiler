@@ -18,7 +18,7 @@ this_dir = os.path.dirname(this_file)
 
 def test_simple_message(benchmark):
     resources = [FtlResource('single-string-literal = Hello I am a single string literal')]
-    benchmark(lambda: compile_messages(resources, 'en'))
+    benchmark(lambda: compile_messages('en', resources))
 
 
 def test_term_inlining(benchmark):
@@ -30,7 +30,7 @@ def test_term_inlining(benchmark):
 my-message = This is a message from { -my-brand(style: "upper") }
 
 """)]
-    benchmark(lambda: compile_messages(resources, 'en'))
+    benchmark(lambda: compile_messages('en', resources))
 
 
 def test_number_simplifying(benchmark):
@@ -41,7 +41,7 @@ my-message = { NUMBER($count) ->
      *[other] NUMBER(NUMBER($count))
 }
 """)]
-    benchmark(lambda: compile_messages(resources, 'en'))
+    benchmark(lambda: compile_messages('en', resources))
 
 
 if __name__ == '__main__':

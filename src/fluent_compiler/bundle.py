@@ -20,8 +20,8 @@ class FluentBundle(object):
     def __init__(self, locale, resources, functions=None, use_isolating=True, escapers=None):
         self.locale = locale
         compiled_ftl = compile_messages(
-            resources,
             locale,
+            resources,
             use_isolating=use_isolating,
             functions=functions,
             escapers=escapers)
