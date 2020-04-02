@@ -14,6 +14,6 @@ class FtlResource(object):
         return cls(text)
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, encoding='utf-8'):
         with open(filename, 'rb') as f:
-            return cls(text=f.read().decode('utf-8'), filename=filename)
+            return cls(text=f.read().decode(encoding), filename=filename)
