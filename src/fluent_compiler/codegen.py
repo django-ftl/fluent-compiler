@@ -424,6 +424,10 @@ class If(Statement, PythonAstList):
     child_elements = ['if_blocks', 'conditions', 'else_block']
 
     def __init__(self, parent_scope, parent_block=None):
+        # We model a "compound if statement" as a list of if blocks
+        # (if/elif/elif etc), each with their own condition, with a final else
+        # block. Note this is quite different from Python's AST for the same
+        # thing, so conversion to AST is more complex because of this.
         self.if_blocks = []
         self.conditions = []
         self._parent_block = parent_block
