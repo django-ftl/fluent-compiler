@@ -420,7 +420,7 @@ class Return(Statement, PythonAst):
         return 'Return({0}'.format(repr(self.value))
 
 
-class If(Statement, PythonAstList):
+class If(Statement, PythonAst):
     child_elements = ['if_blocks', 'conditions', 'else_block']
 
     def __init__(self, parent_scope, parent_block=None):
@@ -449,9 +449,7 @@ class If(Statement, PythonAstList):
             return self.else_block
         return self
 
-    # We implement as_ast_list here to allow us to return a list of statements
-    # in some cases.
-    def as_ast_list(self, allow_empty=True):
+    def as_ast(self):
         if len(self.if_blocks) == 0:
             raise AssertionError("Should have called `finalize` on If")
         if_ast = ast.If(orelse=[], **DEFAULT_AST_ARGS)
@@ -469,7 +467,7 @@ class If(Statement, PythonAstList):
         if self.else_block.statements:
             previous_if.orelse = self.else_block.as_ast_list()
 
-        return [if_ast]
+        return if_ast
 
 
 class Try(Statement, PythonAst):
