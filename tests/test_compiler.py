@@ -202,6 +202,40 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """)
         self.assertEqual(errs, [])
 
+    def test_name_collision_attrs(self):
+        # Our method for suggesting function names produces collisions in some
+        # cases. Check that it doesn't matter
+        code, errs = compile_messages_to_python("""
+            foo--bar = Foo Bar
+                    .attr = Attr
+
+            foo     = Foo
+               .bar--attr = Bar Attr
+
+            caller1 = { foo--bar.attr }
+            caller2 = { foo.bar--attr }
+        """, self.locale)
+        self.assertCodeEqual(code, """
+            def foo__bar(message_args, errors):
+                return 'Foo Bar'
+
+            def foo__bar__attr(message_args, errors):
+                return 'Attr'
+
+            def foo(message_args, errors):
+                return 'Foo'
+
+            def foo__bar__attr2(message_args, errors):
+                return 'Bar Attr'
+
+            def caller1(message_args, errors):
+                return foo__bar__attr(message_args, errors)
+
+            def caller2(message_args, errors):
+                return foo__bar__attr2(message_args, errors)
+        """)
+        self.assertEqual(errs, [])
+
     def test_external_argument(self):
         code, errs = compile_messages_to_python("""
             with-arg = { $arg }
