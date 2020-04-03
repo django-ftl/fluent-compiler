@@ -316,7 +316,7 @@ def messages_to_module(messages, locale, use_isolating=True, functions=None, esc
     for msg_id, msg in message_ids_to_ast.items():
         escaper = compiler_env.escaper_for_message(message_id=msg_id)
         function_name = module.scope.reserve_name(
-            message_function_name_for_msg_id(msg_id),
+            suggested_function_name_for_msg_id(msg_id),
             properties={codegen.PROPERTY_RETURN_TYPE: escaper.output_type}
         )
         compiler_env.message_mapping[msg_id] = function_name
@@ -355,9 +355,13 @@ def get_term_ast(message_dict):
             yield (attribute_ast_to_id(attribute, term), attribute)
 
 
-def message_function_name_for_msg_id(msg_id):
+def suggested_function_name_for_msg_id(msg_id):
     # Scope.reserve_name does further sanitising of name, which we don't need to
-    # worry about.
+    # worry about. It also ensures we don't get dupes. So the fact that this
+    # method will produce occasional collisions is not an issue - here we are
+    # aiming for an easy method than will produce nice obvious names (for the
+    # sake of tests) with a low chance of collision in the normal case (so that
+    # we don't hit worst cases in Scope.reserve_name for normal FTL files).
     return msg_id.replace(ATTRIBUTE_SEPARATOR, '__').replace('-', '_')
 
 
