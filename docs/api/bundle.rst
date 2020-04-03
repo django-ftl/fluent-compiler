@@ -21,15 +21,13 @@ fluent_compiler.bundle
    The remainder of the parameters are the same as for
    :func:`~fluent_compiler.compiler.compile_messages`.
 
-   .. method:: from_string(locale, text, use_isolation=True, functions=None, escapers=None)
-      :classmethod:
+   .. classmethod:: from_string(locale, text, use_isolation=True, functions=None, escapers=None)
 
       Create a bundle from FTL text. This is convenience constructor to avoid
       having to create a :class:`~fluent_compiler.resource.FtlResource`
       manually.
 
-   .. method:: from_files(locale, filenames, use_isolation=True, functions=None, escapers=None)
-      :classmethod:
+   .. classmethod:: from_files(locale, filenames, use_isolation=True, functions=None, escapers=None)
 
       Create a bundle from a list of FTL filenames. This is convenience
       constructor to avoid having to create a
@@ -49,7 +47,7 @@ fluent_compiler.bundle
 
       Example:
 
-      .. code-block::
+      .. code-block:: python
 
          >>> bundle = FluentBundle.from_string('en', '''
          ... hello-user = Hello, { $username }!

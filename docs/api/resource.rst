@@ -17,13 +17,11 @@ fluent_compiler.resource
 
    There are two convenience constructors:
 
-   .. method:: from_string(text)
-      :classmethod:
+   .. classmethod:: from_string(text)
 
       Create an ``FtlResource`` from FTL source text.
 
-   .. method:: from_file(filename, encoding='utf-8')
-      :classmethod:
+   .. classmethod:: from_file(filename, encoding='utf-8')
 
       Create an ``FtlResource`` from a filename, by opening and reading the
       file. UTF-8 encoding is assumed, but can be overridden.
