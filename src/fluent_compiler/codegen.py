@@ -659,6 +659,9 @@ class FunctionCall(Expression):
                 raise AssertionError("Expected {0} to be a valid Fluent NamedArgument name".format(name))
 
         if any(not allowable_name(name) for name in self.kwargs.keys()):
+            # This branch is needed for function arg names like 'foo-bar', which
+            # is allowable in Fluent, but not normally in Python. To make it
+            # possible to call Python functions like that, we use
             # `my_function(**{})` syntax
             kwarg_pairs = list(sorted(self.kwargs.items()))
             kwarg_names, kwarg_values = [k for k, v in kwarg_pairs], [v for k, v in kwarg_pairs]

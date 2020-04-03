@@ -361,6 +361,16 @@ class TestCodeGen(unittest.TestCase):
             else:
                 self.assertRaises(AssertionError, as_source_code, func_call)
 
+    def test_function_call_kwarg_star_syntax(self):
+        module = codegen.Module()
+        module.scope.reserve_name('a_function')
+        func_call = codegen.FunctionCall('a_function', [],
+                                         {"hyphen-ated": codegen.Number(1)},
+                                         module.scope)
+        self.assertCodeEqual(as_source_code(func_call), """
+            a_function(**{'hyphen-ated': 1})
+        """)
+
     def test_function_call_sensitive(self):
         module = codegen.Module()
         module.scope.reserve_name('a_function')
