@@ -659,10 +659,19 @@ class FunctionCall(Expression):
                 raise AssertionError("Expected {0} to be a valid Fluent NamedArgument name".format(name))
 
         if any(not allowable_name(name) for name in self.kwargs.keys()):
-            # This branch is needed for function arg names like 'foo-bar', which
-            # is allowable in Fluent, but not normally in Python. To make it
-            # possible to call Python functions like that, we use
-            # `my_function(**{})` syntax
+            # This branch covers function arg names like 'foo-bar', which are
+            # allowable in Fluent, but not normally in Python. We work around
+            # this using `my_function(**{'foo-bar': baz})` syntax.
+
+            # (In fact, that's not true. It seems that this branch is not
+            # actually necessary, since it is the Python parser that disallows
+            # `foo-bar` as an identifier, and we are by-passing that by
+            # generating AST directly. The functional test in
+            # tests/format/test_functions.py
+            # (test_non_identifier_python_keyword_args) passes without this
+            # branch. However, to be on the safe side, and to produce AST the
+            # decompiles to something more recognisably correct, we pretend this
+            # is necessary).
             kwarg_pairs = list(sorted(self.kwargs.items()))
             kwarg_names, kwarg_values = [k for k, v in kwarg_pairs], [v for k, v in kwarg_pairs]
             return ast.Call(
@@ -676,7 +685,7 @@ class FunctionCall(Expression):
                                       **DEFAULT_AST_ARGS)],
                 **DEFAULT_AST_ARGS)
 
-        # Normal `my_function(kwarg=foo)` syntax
+        # Normal `my_function(foo=bar)` syntax
         return ast.Call(
             func=ast.Name(id=self.function_name, ctx=ast.Load(), **DEFAULT_AST_ARGS),
             args=[arg.as_ast() for arg in self.args],
