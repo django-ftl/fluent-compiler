@@ -3,7 +3,7 @@ fluent_compiler.compiler
 
 .. currentmodule:: fluent_compiler.compiler
 
-This functions and classes documented for module represents the lower level
+The functions and classes documented in this module represent the lower level
 interface for compiling Fluent messages.
 
 .. function:: compile_messages(locale, resources, use_isolating=True, functions=None, escapers=None)
@@ -43,19 +43,22 @@ interface for compiling Fluent messages.
       >>> compiled = compile_messages('en', FtlResource.from_string('''
       ... this-is-a-message = Hello, { $username }!
       ... ''')
+      >>> message_function = compiled.message_functions['this-is-a-message']
       >>> errors = []
-      >>> formatted_message = compiled.message_functions['this-is-a-message']({'user': 'Joe'}, errors)
+      >>> formatted_message = message_function({'user': 'Joe'}, errors)
       >>> formatted_message
       'Hello, Joe!'
       >>> errors
       []
 
+   You are not expected to use this API directly for formatting messages, but
+   should wrap it in some way according to your needs.
 
 .. class:: CompiledFtl
 
    .. attribute:: message_functions
 
-      This is the most important part of `CompiledFtl`. It is a dictionary
+      This is the most important part of ``CompiledFtl``. It is a dictionary
       mapping each FTL message ID to a Python function.
 
       Messages with attributes are mapped to separate items in the dictionary,
@@ -85,16 +88,18 @@ interface for compiling Fluent messages.
 
         your-balance = Your balance is { NUMBER($balance, currencDisplay:"code") }
 
-      (where ``currencDisplay`` is a typo for ``currencyDisplay``), since
+      Here ``currencDisplay`` is a typo for ``currencyDisplay``. Since
       ``NUMBER`` is a function, we get a ``TypeError``:
 
       .. code-block:: python
 
          TypeError("NUMBER() got an unexpected keyword argument 'currencDisplay'")
 
-      Note that these errors may have been detected at compile-time, in which case the
-      generated message function directly creates and returns the error, rather than it
-      being the result of a try/except block that catches a real exception.
+      Note that these errors may have been detected at compile-time, in which
+      case the generated message function directly creates and returns the
+      error, rather than it being the result of a try/except block that catches
+      a real exception. For these compile-time detected errors, you can also
+      find them in :attr:`errors`.
 
       On the other hand some error, like missing external arguments, may only be
       detected at run-time. See also :doc:`../errors`.
@@ -103,7 +108,7 @@ interface for compiling Fluent messages.
 
       A list of compile-time errors. Each item in the list is a 2-tuple::
 
-        (message id, exception object)
+        (message_id, exception_object)
 
       For syntax errors that produce 'junk' that can't be parsed, the message ID
       could be ``None``. We currently don't guarantee the exact types or
@@ -117,5 +122,5 @@ interface for compiling Fluent messages.
 
       The locale string passed to ``compile_messages``
 
-      ``CompiledFtl`` may have other attributes, but they are not considered
-      stable or part of the interface yet.
+   ``CompiledFtl`` may have other attributes, but they are not considered stable
+   or part of the interface yet.
