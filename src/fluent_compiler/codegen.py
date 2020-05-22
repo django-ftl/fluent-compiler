@@ -517,7 +517,9 @@ class String(Expression):
         self.string_value = string_value
 
     def as_ast(self):
-        return ast.Str(self.string_value, **DEFAULT_AST_ARGS)
+        return ast.Str(self.string_value,
+                       kind=None,  # 3.8, indicates no prefix, needed only for tests
+                       **DEFAULT_AST_ARGS)
 
     def __repr__(self):
         return 'String({0})'.format(repr(self.string_value))
@@ -678,7 +680,7 @@ class FunctionCall(Expression):
                 func=ast.Name(id=self.function_name, ctx=ast.Load(), **DEFAULT_AST_ARGS),
                 args=[arg.as_ast() for arg in self.args],
                 keywords=[ast.keyword(arg=None,
-                                      value=ast.Dict(keys=[ast.Str(k, **DEFAULT_AST_ARGS)
+                                      value=ast.Dict(keys=[ast.Str(k, kind=None, **DEFAULT_AST_ARGS)
                                                            for k in kwarg_names],
                                                      values=[v.as_ast() for v in kwarg_values],
                                                      **DEFAULT_AST_ARGS),

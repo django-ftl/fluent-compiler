@@ -1,4 +1,4 @@
-ast_decompiler>=0.3.2
+ast_decompiler>=0.4
 beautifulsoup4>=4.7.1
 hypothesis>=4.9.0
 Markdown>=3.0.1
