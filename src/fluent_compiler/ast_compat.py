@@ -37,10 +37,12 @@ arguments = ast.arguments
 
 if PY2:
     # Python 2 needs identifiers to be bytestrings, not unicode strings:
+    unicode_type = unicode  # noqa
+
     def change_attrs_to_str(ast_class, attr_list):
         def wrapper(**kwargs):
             for attr in attr_list:
-                if attr in kwargs and isinstance(kwargs[attr], unicode):
+                if attr in kwargs and isinstance(kwargs[attr], unicode_type):
                     kwargs[attr] = str(kwargs[attr])
             return ast_class(**kwargs)
         return wrapper
