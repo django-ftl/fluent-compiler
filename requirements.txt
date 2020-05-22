@@ -1,0 +1,5 @@
+fluent.syntax>=0.14
+attrs==19.3.0
+babel==2.8.0
+pytz==2018.9
+six==1.14.0
