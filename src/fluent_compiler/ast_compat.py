@@ -13,8 +13,10 @@ import sys
 PY2 = sys.version_info < (3, 0)
 
 # We include only the things codegen needs.
+Add = ast.Add
 Assign = ast.Assign
 BoolOp = ast.BoolOp
+BinOp = ast.BinOp
 Compare = ast.Compare
 Dict = ast.Dict
 Eq = ast.Eq

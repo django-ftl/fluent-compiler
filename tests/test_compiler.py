@@ -80,7 +80,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         """, self.locale)
         self.assertCodeEqual(code, """
             def foo(message_args, errors):
-                return ''.join(['x ', NUMBER(123).format(locale), ' y'])
+                return 'x ' + NUMBER(123).format(locale) + ' y'
         """)
         self.assertEqual(errs, [])
 
@@ -94,7 +94,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                 return 'Foo'
 
             def bar(message_args, errors):
-                return ''.join(['X ', foo(message_args, errors)])
+                return 'X ' + foo(message_args, errors)
         """)
         self.assertEqual(errs, [])
 
@@ -555,7 +555,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                     _arg_h = _arg
                 else:
                     _arg_h = handle_argument(_arg, 'arg', locale, errors)
-                return ''.join(['Foo \\u2068', handle_output(_arg_h, locale, errors), '\\u2069 Bar'])
+                return 'Foo \\u2068' + handle_output(_arg_h, locale, errors) + '\\u2069 Bar'
         """)
         self.assertEqual(errs, [])
 
@@ -711,7 +711,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
         # outer-message should pass term args, not external args
         self.assertCodeEqual(code, """
             def outer_message(message_args, errors):
-                return ''.join(['Term ', inner_message({'a': NUMBER(1), 'b': 'hello'}, errors)])
+                return 'Term ' + inner_message({'a': NUMBER(1), 'b': 'hello'}, errors)
 
             def inner_message(message_args, errors):
                 try:
@@ -730,9 +730,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                     _arg_h2 = _arg2
                 else:
                     _arg_h2 = handle_argument(_arg2, 'b', locale, errors)
-                return ''.join(
-                    [handle_output(_arg_h, locale, errors), ' ', handle_output(_arg_h2, locale, errors)]
-                )
+                return handle_output(_arg_h, locale, errors) + ' ' + handle_output(_arg_h2, locale, errors)
         """)
 
     def test_reuse_external_arguments(self):
@@ -758,7 +756,7 @@ class TestCompiler(CompilerTestMixin, unittest.TestCase):
                     _ret = 'You have one item'
                 else:
                     _arg_h = handle_argument(_arg, 'arg', locale, errors)
-                    _ret = ''.join(['You have ', NUMBER(_arg_h).format(locale), ' items'])
+                    _ret = 'You have ' + NUMBER(_arg_h).format(locale) + ' items'
                 return _ret
         """)
         self.assertEqual(errs, [])

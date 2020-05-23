@@ -522,7 +522,7 @@ class TestCodeGen(unittest.TestCase):
         module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
         var = module.scope.variable('tmp')
         join = codegen.StringJoin([codegen.String('hello '), var])
-        self.assertCodeEqual(as_source_code(join), "''.join(['hello ', tmp])")
+        self.assertCodeEqual(as_source_code(join), "'hello ' + tmp")
 
     def test_string_join_collapse_strings(self):
         scope = codegen.Scope()
@@ -535,7 +535,7 @@ class TestCodeGen(unittest.TestCase):
             codegen.String(' how'),
             codegen.String(' are you?'),
         ])
-        self.assertCodeEqual(as_source_code(join1), "''.join(['hello there ', tmp, ' how are you?'])")
+        self.assertCodeEqual(as_source_code(join1), "'hello there ' + tmp + ' how are you?'")
 
     def test_cleanup_name(self):
         for n, c in [('abc-def()[]ghi,.<>¡!?¿', 'abcdefghi'),  # illegal chars

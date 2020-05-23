@@ -609,9 +609,11 @@ class StringJoin(Expression):
         return cls(parts)
 
     def as_ast(self):
-        return MethodCall(String(''), 'join',
-                          [List(self.parts)],
-                          expr_type=self.type).as_ast()
+        left = self.parts[0].as_ast()
+        for part in self.parts[1:]:
+            right = part.as_ast()
+            left = ast.BinOp(left=left, op=ast.Add(**DEFAULT_AST_ARGS), right=right, **DEFAULT_AST_ARGS)
+        return left
 
 
 class VariableReference(Expression):
