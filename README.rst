@@ -6,8 +6,10 @@ fluent-compiler
     :target: https://badge.fury.io/py/fluent-compiler
 
 .. image:: https://readthedocs.org/projects/fluent-compiler/badge/?version=latest&style=flat
-   :target: https://fluent-compiler.readthedocs.io
+    :target: https://fluent-compiler.readthedocs.io
 
+.. image:: https://github.com/django-ftl/fluent-compiler/workflows/Python%20package/badge.svg
+    :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22 
 
 This is a Python implementation of Project Fluent, a localization
 framework designed to unleash the entire expressive power of natural
