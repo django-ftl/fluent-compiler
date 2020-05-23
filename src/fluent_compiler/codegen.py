@@ -4,6 +4,7 @@ Utilities for doing Python code generation
 from __future__ import absolute_import, unicode_literals
 
 import keyword
+import platform
 import re
 import sys
 
@@ -575,7 +576,7 @@ class Dict(Expression):
                         **DEFAULT_AST_ARGS)
 
 
-class StringJoin(Expression):
+class StringJoinBase(Expression):
     child_elements = ['parts']
 
     type = text_type
@@ -608,12 +609,46 @@ class StringJoin(Expression):
             return parts[0]
         return cls(parts)
 
+
+if ast.JoinedStr is not None:
+    class FStringJoin(StringJoinBase):
+        def as_ast(self):
+            # f-strings
+            values = []
+            for part in self.parts:
+                if isinstance(part, String):
+                    values.append(part.as_ast())
+                else:
+                    values.append(ast.FormattedValue(
+                        value=part.as_ast(),
+                        conversion=-1,
+                        format_spec=None,
+                        **DEFAULT_AST_ARGS
+                    ))
+            return ast.JoinedStr(values=values, **DEFAULT_AST_ARGS)
+else:
+    FStringJoin = None
+
+
+class ConcatJoin(StringJoinBase):
     def as_ast(self):
+        # Concatenate with +
         left = self.parts[0].as_ast()
         for part in self.parts[1:]:
             right = part.as_ast()
             left = ast.BinOp(left=left, op=ast.Add(**DEFAULT_AST_ARGS), right=right, **DEFAULT_AST_ARGS)
         return left
+
+
+# For CPython, f-strings give an measurable improvement over concatenation
+# (about 5%). For all versions of PyPy tested it has significantly worse
+# performance (more than 10%). We'll assume other non-CPython implementations
+# are like PyPy.
+
+if FStringJoin is not None and platform.python_implementation() == 'CPython':
+    StringJoin = FStringJoin
+else:
+    StringJoin = ConcatJoin
 
 
 class VariableReference(Expression):

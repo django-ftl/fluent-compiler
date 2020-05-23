@@ -37,6 +37,9 @@ Subscript = ast.Subscript
 Tuple = ast.Tuple
 arguments = ast.arguments
 
+JoinedStr = getattr(ast, 'JoinedStr', None)
+FormattedValue = getattr(ast, 'FormattedValue', None)
+
 if PY2:
     # Python 2 needs identifiers to be bytestrings, not unicode strings:
     unicode_type = unicode  # noqa

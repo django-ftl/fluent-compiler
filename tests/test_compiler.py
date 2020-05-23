@@ -9,6 +9,8 @@ from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError
 from fluent_compiler.utils import SimpleNamespace
 from fluent_compiler.resource import FtlResource
 
+from fluent_compiler import codegen
+
 from .test_codegen import decompile_ast_list, normalize_python
 from .utils import dedent_ftl
 
@@ -43,7 +45,20 @@ class CompilerTestMixin(object):
                          normalize_python(code2))
 
 
-class TestCompiler(CompilerTestMixin, unittest.TestCase):
+class UseConcatJoinMixin(object):
+    # This is used so that we don't have to use different tests for different
+    # Python versions.
+    def setUp(self):
+        super(UseConcatJoinMixin, self).setUp()
+        self.default_StringJoin = codegen.StringJoin
+        codegen.StringJoin = codegen.ConcatJoin
+
+    def tearDown(self):
+        codegen.StringJoin = self.default_StringJoin
+        super(UseConcatJoinMixin, self).tearDown()
+
+
+class TestCompiler(CompilerTestMixin, UseConcatJoinMixin, unittest.TestCase):
     def test_single_string_literal(self):
         code, errs = compile_messages_to_python("""
             foo = Foo

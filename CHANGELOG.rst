@@ -1,6 +1,12 @@
 Changelog
 =========
 
+fluent_compiler 0.3 (under development)
+---------------------------------------
+
+* Fixed test suite on Python 3.8
+* Performance improvements
+
 fluent_compiler 0.2 (2020-04-02)
 --------------------------------
 * New :class:`fluent_compiler.bundle.FluentBundle` API - **backwards

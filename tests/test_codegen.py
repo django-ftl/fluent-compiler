@@ -73,7 +73,6 @@ def as_source_code(codegen_ast):
 
 
 class TestCodeGen(unittest.TestCase):
-
     def assertCodeEqual(self, code1, code2):
         self.assertEqual(normalize_python(code1),
                          normalize_python(code2))
@@ -517,18 +516,26 @@ class TestCodeGen(unittest.TestCase):
         join = codegen.StringJoin.build([codegen.String('hello')])
         self.assertCodeEqual(as_source_code(join), "'hello'")
 
-    def test_string_join_two(self):
+    def test_concat_string_join_two(self):
         module = codegen.Module()
         module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
         var = module.scope.variable('tmp')
-        join = codegen.StringJoin([codegen.String('hello '), var])
+        join = codegen.ConcatJoin([codegen.String('hello '), var])
         self.assertCodeEqual(as_source_code(join), "'hello ' + tmp")
+
+    @unittest.skipIf(codegen.FStringJoin is None, 'FStringJoin not available')
+    def test_f_string_join_two(self):
+        module = codegen.Module()
+        module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
+        var = module.scope.variable('tmp')
+        join = codegen.FStringJoin([codegen.String('hello '), var])
+        self.assertCodeEqual(as_source_code(join), "f'hello {tmp}'")
 
     def test_string_join_collapse_strings(self):
         scope = codegen.Scope()
         scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
         var = scope.variable('tmp')
-        join1 = codegen.StringJoin.build([
+        join1 = codegen.ConcatJoin.build([
             codegen.String('hello '),
             codegen.String('there '),
             var,
