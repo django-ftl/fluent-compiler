@@ -641,9 +641,9 @@ class ConcatJoin(StringJoinBase):
 
 
 # For CPython, f-strings give an measurable improvement over concatenation
-# (about 5%). For all versions of PyPy tested it has significantly worse
-# performance (more than 10%). We'll assume other non-CPython implementations
-# are like PyPy.
+# (about 5% for `test_single_interpolation_fluent_compiler` benchmark). For all
+# versions of PyPy tested it has significantly worse performance (more than
+# 10%). We'll assume other non-CPython implementations are like PyPy.
 
 if FStringJoin is not None and platform.python_implementation() == 'CPython':
     StringJoin = FStringJoin
