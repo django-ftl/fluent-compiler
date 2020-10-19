@@ -437,8 +437,7 @@ def contains_reference_cycle(msg, compiler_env):
     #  }
 
     # These messages are rejected as containing cycles by this checker, when in
-    # fact they cannot go into an infinite loop, and the resolver correctly
-    # executes them.
+    # fact they cannot go into an infinite loop.
 
     # It is pretty difficult to come up with a compelling use case
     # for this kind of thing though... so we are not too worried
