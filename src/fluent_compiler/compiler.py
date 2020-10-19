@@ -517,7 +517,79 @@ def contains_reference_cycle(msg, compiler_env):
     return any(checks)
 
 
-# Begin 'compile_expr' implementation
+# ----------------- Begin 'compile_expr' implementation ---------------------
+#
+# The `compile_expre_XXXX functions` form the heart of handling all FTL syntax.
+# They convert FTL AST nodes (as created by fluent.syntax parser) 
+# into Python expressions (in the form of our `codegen.PythonAst` objects).
+#
+# The first `compile_expr` function is decorated with `@singledispatch`,
+# so we can then dispatch to other functions based on the type of the first
+# argument. This is instead of a huge switch statement consisting of 
+# `if isinstance(ast, XXX): handle_XXX(...)`, or other similar visitor patterns.
+#
+# The basic structure is that each `compile_expr` returns a single codegen.PythonAst
+# object that corresponds to the passed in FTL AST (the first argument).
+# It may also modify the passed in `block`, which represents the block of Python code
+# already built up.
+#
+# The simplest example is compile_expr_text, because we can simply convert an FTL string
+# to a Python string.
+#
+# Other examples require more complex return expressions, and side effects
+# on `block`. For example, we might define a variable by adding an assignment statement 
+# to the block, and return the VariableReference object as the return value.
+#
+# The return value expressions will be used by code further up the chain,
+# right back to the top level code creating the message function,
+# which will use the expressions as a final return value.
+# 
+# Example:
+#
+#    foo = Foo
+#    bar = X { foo }
+#
+# For the `bar` message, we will produce a produce a message function like this:
+#
+#    def bar(message_args, errors):
+#        return f'X {foo(message_args, errors)}'
+#
+# Here:
+#
+# `def bar(message_args, errors):`
+#  - comes from `compile_message` function above
+#
+# `return `
+#  - comes from `compile_message` function above
+#
+# `'X '`
+#  - comes from `compile_expr_text` below
+#
+# `foo(message_args, errors)`
+#  - comes from `compile_expr_message_reference` below
+#
+# f'' (f-string)
+#  - comes from `compile_expr_pattern` below
+#
+# The call chain looks like this (with various intermediate calls omitted):
+#
+#  compile_message
+#    -> compile_expr_pattern
+#       -> compile_expr_text
+#       -> compile_expr_message_reference
+#
+#
+# Note that some of the codegen.PythonAst objects can simplify themselves,
+# and further transformations (i.e. simplifications and optimizations)
+# are done after we've built up a complete Python AST for the function.
+# So the easy one-to-one correspondence above will not always apply.
+#
+# Note also that many functions are complicated by the need for 'escaper' 
+# functions, which will be no-ops (and compile to nothing) if escapers 
+# are not in use for the message.
+#
+# In some functions we use comments starting with `>` to try to indicate
+# generated code, with $ for interpolations (interpreted loosely)
 
 @singledispatch
 def compile_expr(element, block, compiler_env):
@@ -563,7 +635,7 @@ def compile_expr_pattern(pattern, block, compiler_env):
         if wrap_this_with_isolating:
             parts.append(wrap_with_escaper(codegen.String(PDI), block, compiler_env))
 
-    # > ''.join($[p for p in parts])
+    # > f'$[p for p in parts]'
     return EscaperJoin.build(
         [finalize_expr_as_output_type(p, block, compiler_env) for p in parts],
         compiler_env.current.escaper, block.scope
