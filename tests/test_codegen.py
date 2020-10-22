@@ -3,6 +3,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import ast
+import keyword
 import sys
 import textwrap
 import unittest
@@ -70,6 +71,10 @@ def as_source_code(codegen_ast):
     else:
         ast_list = [codegen_ast.as_ast()]
     return decompile_ast_list(ast_list)
+
+
+# Stratgies
+non_keyword_text = text().filter(lambda t: t not in keyword.kwlist)
 
 
 class TestCodeGen(unittest.TestCase):
@@ -556,7 +561,7 @@ class TestCodeGen(unittest.TestCase):
     def test_cleanup_name_not_empty(self, t):
         self.assertTrue(len(codegen.cleanup_name(t)) > 0, " for t = {!r}".format(t))
 
-    @given(text())
+    @given(non_keyword_text)
     def test_cleanup_name_allowed_identifier(self, t):
         self.assertTrue(allowable_name(codegen.cleanup_name(t)), " for t = {!r}".format(t))
 

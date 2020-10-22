@@ -164,6 +164,7 @@ class Scope(object):
 
         used = self.all_reserved_names()
         # We need to also protect against using keywords ('class', 'def' etc.)
+        # i.e. count all keywords as 'used'.
         # However, some builtins are also keywords (e.g. 'None'), and so
         # if a builtin is being reserved, don't check against the keyword list
         if not is_builtin:
