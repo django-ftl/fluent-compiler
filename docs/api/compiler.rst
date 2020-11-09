@@ -40,9 +40,9 @@ interface for compiling Fluent messages.
 
    .. code-block:: python
 
-      >>> compiled = compile_messages('en', FtlResource.from_string('''
+      >>> compiled = compile_messages('en', [FtlResource.from_string('''
       ... this-is-a-message = Hello, { $username }!
-      ... ''')
+      ... ''')])
       >>> message_function = compiled.message_functions['this-is-a-message']
       >>> errors = []
       >>> formatted_message = message_function({'user': 'Joe'}, errors)
