@@ -19,7 +19,7 @@ It provides a different implementation from the official
 `fluent.runtime <https://github.com/projectfluent/python-fluent>`_
 implementation, distinguished mainly by:
 
-- strategy: we compile FTL files to Python code via AST and use ``exec`` (similar
+- strategy: we compile FTL files to Python bytecode via AST and use ``exec`` (similar
   to the strategy used by projects like Mako, Jinja2 and Genshi).
 - speed: as a result of the above, plus static analysis, we get blazing
   fast performance, especially when combined with PyPy which can
@@ -48,7 +48,7 @@ Status
 ------
 
 The package should be considered a 'beta'/'release candidate'. It has a very
-thorough test suite and good docs, and has seen usage in production a dependency
+thorough test suite and good docs, and has seen usage in production as a dependency
 of ``django-ftl`` for a long time, but without many users.
 
 We are not planning major backwards incompatible changes to the interface, but
