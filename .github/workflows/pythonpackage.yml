@@ -44,3 +44,21 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+    - name: Install dependencies
+      run: |
+        pip install flake8==3.8.4
+    - name: Lint with flake8
+      run: flake8
