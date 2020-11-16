@@ -519,12 +519,12 @@ def contains_reference_cycle(msg, compiler_env):
 # ----------------- Begin 'compile_expr' implementation ---------------------
 #
 # The `compile_expre_XXXX functions` form the heart of handling all FTL syntax.
-# They convert FTL AST nodes (as created by fluent.syntax parser) 
+# They convert FTL AST nodes (as created by fluent.syntax parser)
 # into Python expressions (in the form of our `codegen.PythonAst` objects).
 #
 # The first `compile_expr` function is decorated with `@singledispatch`,
 # so we can then dispatch to other functions based on the type of the first
-# argument. This is instead of a huge switch statement consisting of 
+# argument. This is instead of a huge switch statement consisting of
 # `if isinstance(ast, XXX): handle_XXX(...)`, or other similar visitor patterns.
 #
 # The basic structure is that each `compile_expr` returns a single codegen.PythonAst
@@ -536,13 +536,13 @@ def contains_reference_cycle(msg, compiler_env):
 # to a Python string.
 #
 # Other examples require more complex return expressions, and side effects
-# on `block`. For example, we might define a variable by adding an assignment statement 
+# on `block`. For example, we might define a variable by adding an assignment statement
 # to the block, and return the VariableReference object as the return value.
 #
 # The return value expressions will be used by code further up the chain,
 # right back to the top level code creating the message function,
 # which will use the expressions as a final return value.
-# 
+#
 # Example:
 #
 #    foo = Foo
@@ -583,8 +583,8 @@ def contains_reference_cycle(msg, compiler_env):
 # are done after we've built up a complete Python AST for the function.
 # So the easy one-to-one correspondence above will not always apply.
 #
-# Note also that many functions are complicated by the need for 'escaper' 
-# functions, which will be no-ops (and compile to nothing) if escapers 
+# Note also that many functions are complicated by the need for 'escaper'
+# functions, which will be no-ops (and compile to nothing) if escapers
 # are not in use for the message.
 #
 # In some functions we use comments starting with `>` to try to indicate

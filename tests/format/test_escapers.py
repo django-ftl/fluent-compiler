@@ -114,7 +114,7 @@ class TestHtmlEscaping(unittest.TestCase):
         # point - it is no good to escape string input when it enters, it has to
         # be done at the end of the formatting process.
         def QUOTE(arg):
-            return "\n" + "\n".join("> {0}".format(l) for l in arg.split("\n"))
+            return "\n" + "\n".join("> {0}".format(line) for line in arg.split("\n"))
 
         self.bundle = FluentBundle.from_string(
             'en-US',
@@ -290,7 +290,7 @@ class TestMarkdownEscaping(unittest.TestCase):
 
         # This QUOTE function outputs Markdown that should not be removed.
         def QUOTE(arg):
-            return Markdown("\n" + "\n".join("> {0}".format(l) for l in arg.split("\n")))
+            return Markdown("\n" + "\n".join("> {0}".format(line) for line in arg.split("\n")))
 
         self.bundle = FluentBundle.from_string(
             'en-US',
