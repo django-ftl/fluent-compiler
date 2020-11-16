@@ -45,7 +45,7 @@ interface for compiling Fluent messages.
       ... ''')])
       >>> message_function = compiled.message_functions['this-is-a-message']
       >>> errors = []
-      >>> formatted_message = message_function({'user': 'Joe'}, errors)
+      >>> formatted_message = message_function({'username': 'Joe'}, errors)
       >>> formatted_message
       'Hello, Joe!'
       >>> errors

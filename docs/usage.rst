@@ -41,13 +41,7 @@ General usage examples below use ``FluentBundle``.
 Formatting messages
 -------------------
 
-Once you have some FTL files, you can generate translations using the
-``fluent_compiler`` package. You start with the ``FluentBundle`` class:
-
-.. code-block:: python
-
-    >>> from fluent_compiler.bundle import FluentBundle
-
+Here is how to format messages using the ``FluentBundle`` class.
 
 The ``FluentBundle`` constructor takes a list of :class:`FtlResource` objects as
 input, but for convenience there are some alternative constructors
@@ -57,6 +51,7 @@ string (in BCP 47 format) as a first parameter. To construct from a string:
 
 .. code-block:: python
 
+    >>> from fluent_compiler.bundle import FluentBundle
     >>> bundle = FluentBundle.from_string("en-US", """
     ... welcome = Welcome to this great app!
     ... greet-by-name = Hello, { $name }!
