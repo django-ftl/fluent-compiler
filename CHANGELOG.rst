@@ -1,6 +1,10 @@
 Changelog
 =========
 
+fluent_compiler 0.4 (under development)
+---------------------------------------
+
+
 fluent_compiler 0.3 (2020-11-18)
 --------------------------------
 
