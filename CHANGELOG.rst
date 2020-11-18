@@ -1,8 +1,8 @@
 Changelog
 =========
 
-fluent_compiler 0.3 (under development)
----------------------------------------
+fluent_compiler 0.3 (2020-11-18)
+--------------------------------
 
 * Fixed test suite on Python 3.8
 * Performance improvements

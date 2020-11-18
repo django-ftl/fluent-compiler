@@ -18,7 +18,7 @@ Release process
 
 * Tag the release e.g.::
 
-    git tag v0.1.0
+    git tag v0.3
 
 * Update the version numbers again, moving to the next release, and adding "-dev1"
 
