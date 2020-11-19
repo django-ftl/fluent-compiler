@@ -80,3 +80,21 @@ jobs:
         pip install isort==5.6.4
     - name: isort
       run: isort -c src tests
+
+  check-manifest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+    - name: Install dependencies
+      run: |
+        pip install check-manifest
+    - name: check-manifest
+      run: check-manifest
