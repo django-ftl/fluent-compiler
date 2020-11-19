@@ -77,6 +77,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
     - name: Install dependencies
       run: |
-        pip install isort
-    - name: isort==5.6.4
+        pip install isort==5.6.4
+    - name: isort
       run: isort -c src tests
