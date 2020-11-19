@@ -75,6 +75,7 @@ def as_source_code(codegen_ast):
 
 # Stratgies
 non_keyword_text = text().filter(lambda t: t not in keyword.kwlist)
+non_builtin_text = non_keyword_text.filter(lambda t: t not in dir(__builtins__))
 
 
 class TestCodeGen(unittest.TestCase):
@@ -561,7 +562,7 @@ class TestCodeGen(unittest.TestCase):
     def test_cleanup_name_not_empty(self, t):
         self.assertTrue(len(codegen.cleanup_name(t)) > 0, " for t = {!r}".format(t))
 
-    @given(non_keyword_text)
+    @given(non_builtin_text)
     def test_cleanup_name_allowed_identifier(self, t):
         self.assertTrue(allowable_name(codegen.cleanup_name(t)), " for t = {!r}".format(t))
 
