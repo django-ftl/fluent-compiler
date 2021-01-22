@@ -1,7 +1,6 @@
 fluent-compiler
 ===============
 
-
 .. image:: https://badge.fury.io/py/fluent-compiler.svg
     :target: https://badge.fury.io/py/fluent-compiler
 
@@ -11,7 +10,7 @@ fluent-compiler
 .. image:: https://github.com/django-ftl/fluent-compiler/workflows/Python%20package/badge.svg
     :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22 
 
-This is a Python implementation of Project Fluent, a localization
+This is a Python implementation of `Project Fluent <https://www.projectfluent.org/>`_, a localization
 framework designed to unleash the entire expressive power of natural
 language translations.
 
@@ -22,7 +21,7 @@ implementation, distinguished mainly by:
 - strategy: we compile FTL files to Python bytecode via AST and use ``exec`` (similar
   to the strategy used by projects like Mako, Jinja2 and Genshi).
 - speed: as a result of the above, plus static analysis, we get blazing
-  fast performance, especially when combined with PyPy which can
+  fast performance, even more so when combined with PyPy which can
   further optimize.
 - compile-time checking and error reporting.
 - 'escapers' feature for handling things like HTML escaping/embedding correctly.
