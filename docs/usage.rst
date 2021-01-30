@@ -91,11 +91,13 @@ returns a tuple containing ``(translated string, errors)``, as below.
     [FluentReferenceError('Unknown external: name')]
 
 You will notice the extra characters ``\u2068`` and ``\u2069`` in the output.
-These are Unicode bidi isolation characters that help to ensure that the
+These are `Unicode bidi isolation characters
+<https://developer.mozilla.org/en-US/docs/Web/Guide/Unicode_Bidrectional_Text_Algorithm#overriding_bidi_using_unicode_control_characters>`_ -
+non-printing characters that help text layout engines to ensure that the
 interpolated strings are handled correctly in the situation where the text
 direction of the substitution might not match the text direction of the
 localized text. These characters can be disabled if you are sure that is not
-possible for your app by passing ``use_isolating=False`` to the ``FluentBundle``
+needed for your app by passing ``use_isolating=False`` to the ``FluentBundle``
 constructor.
 
 Python 2
