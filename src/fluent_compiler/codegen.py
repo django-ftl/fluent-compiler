@@ -106,7 +106,7 @@ class PythonAstList(object):
         raise NotImplementedError("child_elements needs to be created on {0}".format(type(self)))
 
 
-# `compiler` needs these attributes on AST nodes.
+# `compile` builtin needs these attributes on AST nodes.
 # It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
 DEFAULT_AST_ARGS = dict(lineno=1, col_offset=1)
 
@@ -443,7 +443,6 @@ class If(Statement, PythonAst):
         return new_if
 
     def finalize(self):
-        # TODO - ideally we'd have just `build` or just `finalize`
         if not self.if_blocks:
             # Unusual case of no conditions, only default case, but it
             # simplifies other code to be able to handle this uniformly. We can
@@ -641,7 +640,7 @@ class ConcatJoin(StringJoinBase):
         return left
 
 
-# For CPython, f-strings give an measurable improvement over concatenation
+# For CPython, f-strings give a measurable improvement over concatenation
 # (about 5% for `test_single_interpolation_fluent_compiler` benchmark). For all
 # versions of PyPy tested it has significantly worse performance (more than
 # 10%). We'll assume other non-CPython implementations are like PyPy.

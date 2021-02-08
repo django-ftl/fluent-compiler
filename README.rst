@@ -57,7 +57,8 @@ you are encouraged to do, in order to be able to absorb any backwards
 incompatible changes easily.
 
 See the `issues list <https://github.com/django-ftl/fluent-compiler/issues>`_
-for planned features.
+for planned features, and `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ for information
+about how to contribute.
 
 Background
 ----------
