@@ -42,7 +42,7 @@ See the `docs folder
 <https://github.com/django-ftl/fluent-compiler/tree/master/docs/>`_ or `read
 them on readthedocs.org <https://fluent-compiler.readthedocs.io/en/latest/>`_.
 
-See `history <https://fluent-compiler.readthedocs.io/en/latest/history.html>` for a CHANGELOG.
+See `history <https://fluent-compiler.readthedocs.io/en/latest/history.html>`_ for a CHANGELOG.
 
 Status
 ------
