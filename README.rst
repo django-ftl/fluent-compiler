@@ -27,7 +27,6 @@ implementation, distinguished mainly by:
 - 'escapers' feature for handling things like HTML escaping/embedding correctly.
 
 
-
 Installation
 ------------
 
@@ -42,14 +41,14 @@ See the `docs folder
 <https://github.com/django-ftl/fluent-compiler/tree/master/docs/>`_ or `read
 them on readthedocs.org <https://fluent-compiler.readthedocs.io/en/latest/>`_.
 
+If you are using Django, see `django-ftl <https://github.com/django-ftl/django-ftl>`_ which
+wraps the functionality here in Django-specific ways.
+
 See `history <https://fluent-compiler.readthedocs.io/en/latest/history.html>`_ for a CHANGELOG.
+
 
 Status
 ------
-
-The package should be considered a 'beta'/'release candidate'. It has a very
-thorough test suite and good docs, and has seen usage in production as a dependency
-of ``django-ftl`` for a long time, but without many users.
 
 We are not planning major backwards incompatible changes to the interface, but
 we're also not guaranteeing stability yet. Also, the nature of the library is such
