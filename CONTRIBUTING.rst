@@ -77,6 +77,7 @@ and compile it to Python functions, something roughly like this:
            errors.append(FluentReferenceError("Unknown external: username"))
        return f"Hello {username}"
 
+
    def welcome(args, errors):
        return f"{hello_user(args, errors)} Welcome to Acme CMS."
 
@@ -91,15 +92,25 @@ to allow us to call them.
        'welcome': welcome,
    }
 
+To actually format a message with name ``'msg-name'`` and external arguments
+``args``, we have to do something like:
+
+.. code-block:: python
+
+   errors = []
+   formatted_message = message_functions['msg-name'](args, errors)
+   return formatted_message, errors
+
 Note a few things:
 
 * Each message becomes a Python function.
 * Message references are handled by calling other message functions.
 * We do lots of optimizations at compile time to heavily simplify the
-  expressions that are evaluated at runtime.
-* Term references are inlined for performance.
+  expressions that are evaluated at runtime, including things like inlining
+  terms.
 * We have to handle possible errors in accordance with the Fluent philosophy.
-  Where possible we detect errors at compile time.
+  Where possible we detect errors at compile time, in addition to the runtime
+  handling shown above.
 
 We do not, in fact, generate Python code as a string, but instead generate AST
 which we can convert to executable Python functions using the builtin functions
@@ -109,8 +120,16 @@ which we can convert to executable Python functions using the builtin functions
 Layers
 ~~~~~~
 
-The main module that handles compilation, converting FTL expressions (i.e. FTL
-AST nodes) into Python code is ``fluent_compiler.compiler``.
+The highest level code, which can be used as an entry point by users, is in
+``fluent_compiler.bundle``. The interface provided here, however, is meant
+mainly for demonstration purposes, since it is expected that in many
+circumstances the next level down will be used. For example, `django-ftl
+<https://github.com/django-ftl/django-ftl>`_ by-passes this module and uses the
+next layer down.
+
+The next layer is ``fluent_compiler.compiler``, which handles actual
+compilation, converting FTL expressions (i.e. FTL AST nodes) into Python code.
+The bulk of the FTL specific logic is found here.
 
 For generating Python code, it uses the classes provided by the
 ``fluent_compiler.codegen`` module. These are simplified versions of various
@@ -118,11 +137,11 @@ Python constructs, with an interface that makes it easy for the ``compiler``
 module to construct correct code without worrying about lower level details.
 
 The classes in the ``codegen`` module eventually need to produce AST objects
-that can be passed to the builtin ``compile`` function. The stdlib ``ast``
-module has incompatible differences between different Python versions, so we
-abstract over these in ``fluent_compiler.ast_compat`` which allows the
-``codegen`` module to almost entirely ignore the differences in AST for
-different Python.
+that can be passed Python’s builtin ``compile`` function. The stdlib `ast
+<https://docs.python.org/3/library/ast.html>`_ module has incompatible
+differences between different Python versions, so we abstract over these in
+``fluent_compiler.ast_compat`` which allows the ``codegen`` module to almost
+entirely ignore the differences in AST for different Python.
 
 In addition to these modules, there are some runtime functions and types that
 are needed by the generated Python code, found in ``fluent_compiler.runtime``.
@@ -132,14 +151,14 @@ formatting - these are used directly by users of ``fluent_compiler``, as well as
 internally for implementing things like the ``NUMBER`` and ``DATETIME`` builtin
 FTL functions.
 
-Very high level classes for the end user are provided in
-``fluent_compiler.bundle`` and ``fluent_compiler.resource``.
+Other related level classes for the user are provided in
+``fluent_compiler.resource`` and ``fluent_compiler.escapers``.
 
 Tests
 ~~~~~
 
 The highest level tests are in ``tests/format/``. These are essentially
-integration tests that ensures we produce correct output at runtime.
+functional tests that ensures we produce correct output at runtime.
 
 In addition we have many tests of the lower layers of code. These include
 a lot of tests for our optimizations, many of which work at the level of
