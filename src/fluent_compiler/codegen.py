@@ -60,7 +60,7 @@ SENSITIVE_FUNCTIONS = [
     # to arbitrary Python functions.
 
     # This is not a comprehensive list of functions we are not using, but
-    # functions we definitly don't need and are most likely to be used to
+    # functions we definitely don't need and are most likely to be used to
     # execute remote code or to get around safety mechanisms.
     '__import__',
     '__build_class__',
@@ -708,7 +708,7 @@ class FunctionCall(Expression):
             # generating AST directly. The functional test in
             # tests/format/test_functions.py
             # (test_non_identifier_python_keyword_args) passes without this
-            # branch. However, to be on the safe side, and to produce AST the
+            # branch. However, to be on the safe side, and to produce AST that
             # decompiles to something more recognisably correct, we pretend this
             # is necessary).
             kwarg_pairs = list(sorted(self.kwargs.items()))
@@ -829,7 +829,7 @@ class Or(BoolOp):
 def simplify(codegen_ast, simplifier):
     changes = [True]
 
-    # Wrap `simplifer` (which takes additional `changes` arg)
+    # Wrap `simplifier` (which takes additional `changes` arg)
     # into function that take just `node`, as required by rewriting_traverse
     def rewriter(node):
         return simplifier(node, changes)
