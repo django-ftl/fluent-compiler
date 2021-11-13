@@ -129,7 +129,8 @@ next layer down.
 
 The next layer is ``fluent_compiler.compiler``, which handles actual
 compilation, converting FTL expressions (i.e. FTL AST nodes) into Python code.
-The bulk of the FTL specific logic is found here.
+The bulk of the FTL specific logic is found here. See especially the comments
+on ``compile_expr``.
 
 For generating Python code, it uses the classes provided by the
 ``fluent_compiler.codegen`` module. These are simplified versions of various

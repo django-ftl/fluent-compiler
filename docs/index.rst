@@ -22,3 +22,4 @@ significant changes.
    security
    implementations
    history
+   contributing

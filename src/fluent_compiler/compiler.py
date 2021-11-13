@@ -1,3 +1,5 @@
+# The heart of the FTL -> Python compiler. See the architecture docs in
+# CONTRIBUTING.rst for the big picture, and comments on compile_expr below.
 from __future__ import absolute_import, unicode_literals
 
 import contextlib
@@ -518,7 +520,7 @@ def contains_reference_cycle(msg, compiler_env):
 
 # ----------------- Begin 'compile_expr' implementation ---------------------
 #
-# The `compile_expre_XXXX functions` form the heart of handling all FTL syntax.
+# The `compile_expr_XXXX functions` form the heart of handling all FTL syntax.
 # They convert FTL AST nodes (as created by fluent.syntax parser)
 # into Python expressions (in the form of our `codegen.PythonAst` objects).
 #
@@ -527,42 +529,58 @@ def contains_reference_cycle(msg, compiler_env):
 # argument. This is instead of a huge switch statement consisting of
 # `if isinstance(ast, XXX): handle_XXX(...)`, or other similar visitor patterns.
 #
-# The basic structure is that each `compile_expr` returns a single codegen.PythonAst
-# object that corresponds to the passed in FTL AST (the first argument).
-# It may also modify the passed in `block`, which represents the block of Python code
-# already built up.
+# The basic structure is that each `compile_expr` returns a single
+# codegen.PythonAst object that corresponds to the passed in FTL AST (the first
+# argument). That is, the overall strategy is to compile each FTL AST object to
+# a single Python expression.
 #
-# The simplest example is compile_expr_text, because we can simply convert an FTL string
-# to a Python string.
+# The simplest example is compile_expr_text, because we can simply convert an
+# FTL string to a Python string.
 #
-# Other examples require more complex return expressions, and side effects
-# on `block`. For example, we might define a variable by adding an assignment statement
-# to the block, and return the VariableReference object as the return value.
+# However, some FTL expressions cannot really be implemented in this way. For
+# example, the "selectors" Fluent feature needs control structures. To support
+# this, each `compile_expr` implementation may also modify the passed in
+# `block`, which represents the block of Python code already built up.
 #
-# The return value expressions will be used by code further up the chain,
-# right back to the top level code creating the message function,
-# which will use the expressions as a final return value.
+# So, for example, `compile_expr_select_expression` adds an `if/elif/else`
+# clause to the current block. This does the control flow we need, and each
+# branch assigns to a temporary variable. The final returned expression is just
+# that temporary variable as a VariableReference object. This allows us to stay
+# within the paradigm of one FTL expression -> one Python expression - each
+# `compile_expr` method still returns a single expression, but it may also
+# mutate the passed in `block` in order to add the code needed to support that
+# single expression.
+#
+# Other statements are also added to the block for other purposes e.g. error
+# logging.
+#
+# The return value expressions will be used by code further up the chain, right
+# back to the top level code creating the message function, which will use a
+# single final expression as a return value.
 #
 # Example:
 #
 #    foo = Foo
 #    bar = X { foo }
 #
-# For the `bar` message, we will produce a produce a message function like this:
+# These messages will be compiled to Python functions like these:
+#
+#    def foo(message_args, errors):
+#        return 'Foo'
 #
 #    def bar(message_args, errors):
 #        return f'X {foo(message_args, errors)}'
 #
 # Here:
 #
-# `def bar(message_args, errors):`
-#  - comes from `compile_message` function above
+# The function definitions and signatures:
+#  - come from `compile_message` function above
 #
 # `return `
 #  - comes from `compile_message` function above
 #
-# `'X '`
-#  - comes from `compile_expr_text` below
+# `Foo` and `'X '`
+#  - come from `compile_expr_text` below
 #
 # `foo(message_args, errors)`
 #  - comes from `compile_expr_message_reference` below
@@ -570,7 +588,8 @@ def contains_reference_cycle(msg, compiler_env):
 # f'' (f-string)
 #  - comes from `compile_expr_pattern` below
 #
-# The call chain looks like this (with various intermediate calls omitted):
+# For `bar` the call chain looks like this (with various intermediate calls
+# omitted):
 #
 #  compile_message
 #    -> compile_expr_pattern
@@ -578,10 +597,11 @@ def contains_reference_cycle(msg, compiler_env):
 #       -> compile_expr_message_reference
 #
 #
-# Note that some of the codegen.PythonAst objects can simplify themselves,
-# and further transformations (i.e. simplifications and optimizations)
-# are done after we've built up a complete Python AST for the function.
-# So the easy one-to-one correspondence above will not always apply.
+# Note that some of the codegen.PythonAst objects can simplify themselves as
+# they are being built or finalised, and further transformations (i.e.
+# simplifications and optimizations) are done after we've built up a complete
+# Python AST for the function. So the easy one-to-one correspondence above will
+# not always apply.
 #
 # Note also that many functions are complicated by the need for 'escaper'
 # functions, which will be no-ops (and compile to nothing) if escapers
