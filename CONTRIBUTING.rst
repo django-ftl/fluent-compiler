@@ -54,9 +54,7 @@ Architecture
 The following is a brief, very high-level overview of what fluent-compiler does
 and the various layers.
 
-Our basic strategy is that we take an FTL file like this:
-
-.. code-block::
+Our basic strategy is that we take an FTL file like this::
 
    hello-user = Hello { $username }!
 
