@@ -1,4 +1,4 @@
-Contributing to fluent_compiler
+Contributing to fluent-compiler
 ===============================
 
 Issues

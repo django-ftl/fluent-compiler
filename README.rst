@@ -58,7 +58,7 @@ incompatible changes easily.
 
 See the `issues list <https://github.com/django-ftl/fluent-compiler/issues>`_
 for planned features, and `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ for information
-about how to contribute, and the `architecture docs <ARCHITECTURE.rst>`_
+about how to contribute, and the `architecture docs <ARCHITECTURE.rst>`_.
 
 Background
 ----------
