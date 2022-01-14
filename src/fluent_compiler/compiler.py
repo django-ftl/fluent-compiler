@@ -1,5 +1,5 @@
 # The heart of the FTL -> Python compiler. See the architecture docs in
-# CONTRIBUTING.rst for the big picture, and comments on compile_expr below.
+# ARCHITECTURE.rst for the big picture, and comments on compile_expr below.
 from __future__ import absolute_import, unicode_literals
 
 import contextlib
