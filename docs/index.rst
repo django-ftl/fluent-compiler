@@ -1,5 +1,5 @@
 
-Welcome to fluent_compiler's documentation!
+Welcome to fluent-compiler's documentation!
 ===========================================
 
 These are the docs for ``fluent_compiler`` |release|. Check the :doc:`/history` for
