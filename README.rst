@@ -60,6 +60,14 @@ See the `issues list <https://github.com/django-ftl/fluent-compiler/issues>`_
 for planned features, and `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ for information
 about how to contribute, and the `architecture docs <ARCHITECTURE.rst>`_.
 
+Contributing
+------------
+
+Check out the `contributing docs <CONTRIBUTING.rst>`_ and `the architecture
+notes <ARCHITECTURE.rst>`_ for information that will help you before you start
+hacking.
+
+
 Background
 ----------
 

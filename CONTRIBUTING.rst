@@ -37,13 +37,6 @@ You can also run tests with pytest::
   pytest
 
 
-Project layout and architecture
--------------------------------
-
-See `the architectire notes <ARCHITECTURE.rst>`_ for information that will
-help you before you start hacking.
-
-
 Fixes and features
 ------------------
 
