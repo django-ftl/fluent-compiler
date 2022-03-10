@@ -390,21 +390,20 @@ def compile_message(msg, msg_id, function_name, module, compiler_env):
     return msg_func
 
 
-def traverse_ast(node, fun, exclude_attributes=None):
+def traverse_ast(node, func, exclude_attributes=None):
     """
-    Postorder-traverse this node and apply `fun` to all child nodes.
+    Postorder-traverse this node and apply `func` to all child nodes.
 
     exclude_attributes is a list of (node type, attribute name) tuples
     that should not be recursed into.
     """
-
     def visit(value):
-        """Call `fun` on `value` and its descendants."""
+        """Call `func` on `value` and its descendants."""
         if isinstance(value, BaseNode):
-            return traverse_ast(value, fun, exclude_attributes=exclude_attributes)
+            return traverse_ast(value, func, exclude_attributes=exclude_attributes)
         if isinstance(value, list):
-            return fun(list(map(visit, value)))
-        return fun(value)
+            return func(list(map(visit, value)))
+        return func(value)
 
     # Use all attributes found on the node
     parts = vars(node).items()
@@ -413,7 +412,7 @@ def traverse_ast(node, fun, exclude_attributes=None):
             continue
         visit(value)
 
-    return fun(node)
+    return func(node)
 
 
 def contains_reference_cycle(msg, compiler_env):
