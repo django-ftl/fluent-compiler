@@ -33,7 +33,6 @@ If all that is successful, you are in good shape to start developing!
 
 You can also run tests with pytest::
 
-  pip install pytest
   pytest
 
 
