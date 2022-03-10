@@ -3,4 +3,4 @@ beautifulsoup4>=4.7.1
 hypothesis>=4.9.0
 Markdown>=3.0.1
 MarkupSafe>=1.1.1
-pytest>=7.0.1
+pytest

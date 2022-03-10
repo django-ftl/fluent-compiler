@@ -27,13 +27,10 @@ To contribute fixes and features, you'll need to get set up for development:
 
 6. Run the tests::
 
-     ./runtests.py
+     pytest
 
 If all that is successful, you are in good shape to start developing!
 
-You can also run tests with pytest::
-
-  pytest
 
 
 Fixes and features
