@@ -4,55 +4,25 @@ from __future__ import absolute_import, unicode_literals
 
 import ast
 import keyword
-import sys
 import textwrap
 import unittest
 
-import six
-from ast_decompiler import decompiler
+from ast_decompiler.decompiler import Decompiler
 from hypothesis import given
 from hypothesis.strategies import text
 
 from fluent_compiler import codegen
 from fluent_compiler.utils import allowable_name
 
-text_type = six.text_type
-
 
 def normalize_python(txt):
     return textwrap.dedent(txt.rstrip()).strip()
 
 
-class CodegenDecompiler(decompiler.Decompiler):
-    if sys.version_info < (3, 0):
-        # We override one bit of behaviour to make Python 2 testing simpler.
-
-        # We don't need 'u' prefixes on strings because we are using from
-        # __future__ import unicode_literals. Therefore we omit them in the
-        # decompiled output. This function is copy-pasted from Decompiler.
-        # with just the unicode branch changed.
-
-        def visit_Str(self, node):
-            if sys.version_info < (3, 0):
-                if self.has_unicode_literals and isinstance(node.s, str):
-                    self.write('b')
-                # REMOVED
-                # elif isinstance(node.s, unicode):
-                #     self.write('u')
-            if sys.version_info >= (3, 6) and self.has_parent_of_type(ast.FormattedValue):
-                delimiter = '"'
-            else:
-                delimiter = "'"
-            self.write(delimiter)
-            s = node.s.encode('unicode-escape').decode('ascii')
-            self.write(s.replace(delimiter, '\\' + delimiter))
-            self.write(delimiter)
-
-
 def decompile(ast, indentation=4, line_length=100, starting_indentation=0):
     """Decompiles an AST into Python code.
     """
-    decompiler = CodegenDecompiler(
+    decompiler = Decompiler(
         indentation=indentation,
         line_length=line_length,
         starting_indentation=starting_indentation,
@@ -524,22 +494,21 @@ class TestCodeGen(unittest.TestCase):
 
     def test_concat_string_join_two(self):
         module = codegen.Module()
-        module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
+        module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: str})
         var = module.scope.variable('tmp')
         join = codegen.ConcatJoin([codegen.String('hello '), var])
         self.assertCodeEqual(as_source_code(join), "'hello ' + tmp")
 
-    @unittest.skipIf(codegen.FStringJoin is None, 'FStringJoin not available')
     def test_f_string_join_two(self):
         module = codegen.Module()
-        module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
+        module.scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: str})
         var = module.scope.variable('tmp')
         join = codegen.FStringJoin([codegen.String('hello '), var])
         self.assertCodeEqual(as_source_code(join), "f'hello {tmp}'")
 
     def test_string_join_collapse_strings(self):
         scope = codegen.Scope()
-        scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: text_type})
+        scope.reserve_name('tmp', properties={codegen.PROPERTY_TYPE: str})
         var = scope.variable('tmp')
         join1 = codegen.ConcatJoin.build([
             codegen.String('hello '),

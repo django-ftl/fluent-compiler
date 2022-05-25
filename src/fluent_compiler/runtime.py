@@ -3,8 +3,6 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-import six
-
 from .errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from .types import FluentNone, FluentType, fluent_date, fluent_number
 
@@ -13,11 +11,9 @@ __all__ = ['handle_argument_with_escaper', 'handle_output_with_escaper', 'handle
            'FluentFormatError', 'FluentNone']
 
 
-text_type = six.text_type
-
 RETURN_TYPES = {
     'handle_argument': object,
-    'handle_output': text_type,
+    'handle_output': str,
     'FluentReferenceError': FluentReferenceError,
     'FluentFormatError': FluentFormatError,
     'FluentNone': FluentNone,
@@ -28,7 +24,7 @@ def handle_argument_with_escaper(arg, name, output_type, locale, errors):
     # This needs to be synced with resolver.handle_variable_reference
     if isinstance(arg, output_type):
         return arg
-    if isinstance(arg, text_type):
+    if isinstance(arg, str):
         return arg
     elif isinstance(arg, (int, float, Decimal)):
         return fluent_number(arg)
@@ -42,7 +38,7 @@ def handle_argument_with_escaper(arg, name, output_type, locale, errors):
 def handle_argument(arg, name, locale, errors):
     # handle_argument_with_escaper specialized to null escaper
     # This needs to be synced with resolver.handle_variable_reference
-    if isinstance(arg, text_type):
+    if isinstance(arg, str):
         return arg
     elif isinstance(arg, (int, float, Decimal)):
         return fluent_number(arg)
@@ -56,7 +52,7 @@ def handle_argument(arg, name, locale, errors):
 def handle_output_with_escaper(val, output_type, escaper_escape, locale, errors):
     if isinstance(val, output_type):
         return val
-    elif isinstance(val, text_type):
+    elif isinstance(val, str):
         return escaper_escape(val)
     elif isinstance(val, FluentType):
         return escaper_escape(val.format(locale))
@@ -69,7 +65,7 @@ def handle_output_with_escaper(val, output_type, escaper_escape, locale, errors)
 
 def handle_output(val, locale, errors):
     # handle_output_with_escaper specialized to null_escaper
-    if isinstance(val, text_type):
+    if isinstance(val, str):
         return val
     elif isinstance(val, FluentType):
         return val.format(locale)

@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-import six
 
 from fluent_compiler.bundle import FluentBundle
 from fluent_compiler.errors import FluentReferenceError
@@ -18,7 +17,7 @@ class TestFunctionCalls(unittest.TestCase):
             return x
 
         def WITH_KEYWORD(x, y=0):
-            return six.text_type(x + y)
+            return str(x + y)
 
         def RUNTIME_ERROR(x):
             return 1/0
@@ -27,7 +26,7 @@ class TestFunctionCalls(unittest.TestCase):
             return arg + 1
 
         def ANY_ARGS(*args, **kwargs):
-            return (' '.join(map(six.text_type, args)) + " " +
+            return (' '.join(map(str, args)) + " " +
                     ' '.join("{0}={1}".format(k, v) for k, v in sorted(kwargs.items())))
 
         def RESTRICTED(allowed=None, notAllowed=None):

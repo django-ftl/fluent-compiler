@@ -6,9 +6,7 @@ from __future__ import absolute_import, unicode_literals
 import keyword
 import platform
 import re
-import sys
 
-from six import text_type
 
 from . import ast_compat as ast
 from .utils import allowable_keyword_arg_name, allowable_name
@@ -393,6 +391,7 @@ class Function(Scope, Statement, PythonAst):
                 **DEFAULT_AST_ARGS),
             body=self.body.as_ast_list(allow_empty=False),
             decorator_list=[],
+            returns=None,  # ast_decompiler compat
             **DEFAULT_AST_ARGS)
         if self.source is not None and self.source.filename is not None:
             func_def.filename = self.source.filename  # See Module.as_multiple_module_ast
@@ -512,7 +511,7 @@ class Expression(PythonAst):
 class String(Expression):
     child_elements = []
 
-    type = text_type
+    type = str
 
     def __init__(self, string_value):
         self.string_value = string_value
@@ -527,11 +526,6 @@ class String(Expression):
 
     def __eq__(self, other):
         return isinstance(other, String) and other.string_value == self.string_value
-
-    if sys.version_info < (3,):
-        # Python 2 does not implement __ne__ based on __eq__
-        def __ne__(self, other):
-            return not self == other
 
 
 class Number(Expression):
@@ -579,7 +573,7 @@ class Dict(Expression):
 class StringJoinBase(Expression):
     child_elements = ['parts']
 
-    type = text_type
+    type = str
 
     def __init__(self, parts):
         self.parts = parts
@@ -610,24 +604,21 @@ class StringJoinBase(Expression):
         return cls(parts)
 
 
-if ast.JoinedStr is not None:
-    class FStringJoin(StringJoinBase):
-        def as_ast(self):
-            # f-strings
-            values = []
-            for part in self.parts:
-                if isinstance(part, String):
-                    values.append(part.as_ast())
-                else:
-                    values.append(ast.FormattedValue(
-                        value=part.as_ast(),
-                        conversion=-1,
-                        format_spec=None,
-                        **DEFAULT_AST_ARGS
-                    ))
-            return ast.JoinedStr(values=values, **DEFAULT_AST_ARGS)
-else:
-    FStringJoin = None
+class FStringJoin(StringJoinBase):
+    def as_ast(self):
+        # f-strings
+        values = []
+        for part in self.parts:
+            if isinstance(part, String):
+                values.append(part.as_ast())
+            else:
+                values.append(ast.FormattedValue(
+                    value=part.as_ast(),
+                    conversion=-1,
+                    format_spec=None,
+                    **DEFAULT_AST_ARGS
+                ))
+        return ast.JoinedStr(values=values, **DEFAULT_AST_ARGS)
 
 
 class ConcatJoin(StringJoinBase):
@@ -645,7 +636,7 @@ class ConcatJoin(StringJoinBase):
 # versions of PyPy tested it has significantly worse performance (more than
 # 10%). We'll assume other non-CPython implementations are like PyPy.
 
-if FStringJoin is not None and platform.python_implementation() == 'CPython':
+if platform.python_implementation() == 'CPython':
     StringJoin = FStringJoin
 else:
     StringJoin = ConcatJoin

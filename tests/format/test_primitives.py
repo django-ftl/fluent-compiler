@@ -3,8 +3,6 @@ from __future__ import absolute_import, unicode_literals
 
 import unittest
 
-import six
-
 from fluent_compiler.bundle import FluentBundle
 
 from ..utils import dedent_ftl
@@ -35,7 +33,7 @@ class TestSimpleStringValue(unittest.TestCase):
     def test_can_be_used_as_a_value(self):
         val, errs = self.bundle.format('foo', {})
         self.assertEqual(val, 'Foo')
-        self.assertEqual(type(val), six.text_type)
+        self.assertEqual(type(val), str)
         self.assertEqual(errs, [])
 
     def test_can_be_used_in_a_placeable(self):

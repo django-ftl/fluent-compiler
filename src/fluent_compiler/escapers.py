@@ -1,6 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 
-import six
 
 from . import codegen
 from .utils import SimpleNamespace
@@ -25,7 +24,7 @@ def select_always(message_id=None, **kwargs):
 
 null_escaper = SimpleNamespace(
     select=select_always,
-    output_type=six.text_type,
+    output_type=str,
     escape=identity,
     mark_escaped=identity,
     join=default_join,

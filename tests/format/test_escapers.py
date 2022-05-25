@@ -3,7 +3,6 @@ from __future__ import absolute_import, unicode_literals
 import operator
 import unittest
 
-import six
 from bs4 import BeautifulSoup
 from markdown import markdown
 from markupsafe import Markup, escape
@@ -12,8 +11,7 @@ from fluent_compiler.bundle import FluentBundle
 
 from ..utils import dedent_ftl
 
-if six.PY3:
-    from functools import reduce
+from functools import reduce
 
 
 # An escaper for MarkupSafe with instrumentation so we can check behaviour
@@ -28,7 +26,7 @@ class HtmlEscaper(object):
         return message_id.endswith('-html')
 
     def mark_escaped(self, escaped):
-        self.test_case.assertEqual(type(escaped), six.text_type)
+        self.test_case.assertEqual(type(escaped), str)
         return Markup(escaped)
 
     def escape(self, unescaped):
@@ -42,7 +40,7 @@ class HtmlEscaper(object):
 
 # A very basic Markdown 'escaper'. The main point of this implementation is
 # that, unlike HtmlEscaper above, the output type is not a subclass of
-# str/unicode, in order to test the implementation handles this properly.
+# str, in order to test the implementation handles this properly.
 
 # We also test whether the implementation can handle subclasses
 class Markdown(object):
@@ -90,7 +88,7 @@ class MarkdownEscaper(object):
         return message_id.endswith('-md')
 
     def mark_escaped(self, escaped):
-        self.test_case.assertEqual(type(escaped), six.text_type)
+        self.test_case.assertEqual(type(escaped), str)
         return LiteralMarkdown(escaped)
 
     def escape(self, unescaped):
