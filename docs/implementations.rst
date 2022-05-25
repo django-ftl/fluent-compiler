@@ -57,13 +57,13 @@ benchmarks that compare speed to GNU gettext as a reference. Below is a rough
 summary:
 
 For the simple but very common case of a message defining a static string,
-``FluentBundle.format`` is very close to GNU gettext, or much faster,
-depending on whether you are using Python 2 or 3, and your Python implementation
-(e.g. CPython or PyPy). (The worst case we found was 5% faster than gettext on
-CPython 2.7, and the best case was about 3.5 times faster for PyPy2 5.1.2). For
-cases of substituting a single string into a message,
-``FluentBundle.format`` is between 30% slower and 2.5 times faster than an
-equivalent implementation using GNU gettext and Python ``%`` interpolation.
+``FluentBundle.format`` is very close to GNU gettext, or much faster, depending
+on your Python version and implementation (e.g. CPython or PyPy). (The worst
+case we found was 7% slower than gettext on CPython 3.9, and the best case was
+about 3.5 times faster for PyPy3.6 7.3.0). For cases of substituting a single
+string into a message, ``FluentBundle.format`` was between 7% slower and 3.4
+times faster than an equivalent implementation using GNU gettext and Python
+``%`` interpolation.
 
 For message where plural rules are involved, currently ``fluent_compiler``
 can be significantly slower than using GNU gettext, partly because it uses

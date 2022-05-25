@@ -2,12 +2,12 @@
 # ARCHITECTURE.rst for the big picture, and comments on compile_expr below.
 from __future__ import absolute_import, unicode_literals
 
+import builtins
 import contextlib
 from collections import OrderedDict
 
 import attr
 import babel
-import six
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import (Attribute, BaseNode, FunctionReference, Identifier, Junk, Message, MessageReference,
                                NumberLiteral, Pattern, Placeable, SelectExpression, StringLiteral, Term, TermReference,
@@ -22,13 +22,8 @@ from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (ATTRIBUTE_SEPARATOR, TERM_SIGIL, args_match, ast_to_id, attribute_ast_to_id, display_location,
                     inspect_function_args, reference_to_id, span_to_position)
 
-try:
-    from functools import singledispatch
-except ImportError:
-    # Python < 3.4
-    from singledispatch import singledispatch
+from functools import singledispatch
 
-text_type = six.text_type
 
 # Unicode bidi isolation characters.
 FSI = "\u2068"
@@ -172,7 +167,7 @@ def compile_messages(locale, resources, use_isolating=True, functions=None, esca
         if key.startswith(TERM_SIGIL):
             # term, shouldn't be in publicly available messages
             continue
-        message_functions[six.text_type(key)] = module_globals[val]
+        message_functions[str(key)] = module_globals[val]
 
     return CompiledFtl(
         message_functions=message_functions,
@@ -260,7 +255,7 @@ def messages_to_module(messages, locale, use_isolating=True, functions=None, esc
     module_globals = {
         k: getattr(runtime, k) for k in runtime.__all__
     }
-    module_globals.update(six.moves.builtins.__dict__)
+    module_globals.update(builtins.__dict__)
     module_globals[LOCALE_NAME] = locale
 
     # Return types of known functions.
@@ -269,7 +264,7 @@ def messages_to_module(messages, locale, use_isolating=True, functions=None, esc
     known_return_types.update(runtime.RETURN_TYPES)
 
     module_globals[PLURAL_FORM_FOR_NUMBER_NAME] = plural_form_for_number
-    known_return_types[PLURAL_FORM_FOR_NUMBER_NAME] = text_type
+    known_return_types[PLURAL_FORM_FOR_NUMBER_NAME] = str
 
     def get_name_properties(name):
         properties = {}
@@ -282,7 +277,7 @@ def messages_to_module(messages, locale, use_isolating=True, functions=None, esc
         name = module.scope.reserve_name(
             k,
             properties=get_name_properties(k),
-            is_builtin=k in six.moves.builtins.__dict__
+            is_builtin=k in builtins.__dict__
         )
         # We should have chosen all our module_globals to avoid name conflicts:
         assert name == k, "Expected {0}=={1}".format(name, k)
@@ -1012,7 +1007,7 @@ def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
     escaper = compiler_env.current.escaper
     if codegen_ast.type is escaper.output_type:
         return codegen_ast
-    if issubclass(codegen_ast.type, six.text_type):
+    if issubclass(codegen_ast.type, str):
         return wrap_with_escaper(codegen_ast, block, compiler_env)
     if issubclass(codegen_ast.type, FluentType):
         # > $escaper.escape($codegen_ast.format(locale))
@@ -1020,7 +1015,7 @@ def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
             codegen.MethodCall(codegen_ast,
                                'format',
                                [block.scope.variable(LOCALE_NAME)],
-                               expr_type=text_type),
+                               expr_type=str),
             block, compiler_env)
     if escaper is null_escaper:
         # > handle_output($python_expr, locale, errors)
@@ -1030,7 +1025,7 @@ def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
                                      block.scope.variable(ERRORS_NAME)],
                                     {},
                                     block.scope,
-                                    expr_type=text_type)
+                                    expr_type=str)
 
     # > handle_output_with_escaper($codegen_ast, $escaper.output_type, $escaper.escape, locale, errors)
     return codegen.FunctionCall('handle_output_with_escaper',

@@ -6,5 +6,5 @@ Installation
 
     $ pip install fluent_compiler
 
-Python 2.7 or 3.5+ required. Earlier versions of Python 3 may work but they are
-not officially supported.
+Python 3.6+ required (CPython or PyPy both tested). Earlier versions of Python 3
+may work but they are not officially supported.

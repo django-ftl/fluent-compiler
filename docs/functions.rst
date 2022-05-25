@@ -32,7 +32,7 @@ These functions can accept positional and keyword arguments, like the ``NUMBER``
 and ``DATETIME`` builtins. They must accept the following types of objects
 passed as arguments:
 
-- unicode strings (i.e. ``unicode`` on Python 2, ``str`` on Python 3)
+- ``str``
 - ``fluent_compiler.types.FluentType`` subclasses, namely:
 
   - ``FluentNumber`` - ``int``, ``float`` or ``Decimal`` objects passed in
@@ -46,7 +46,7 @@ passed as arguments:
     argument that hasn't been passed in, objects of this type are passed in.
 
 Custom functions should not raise exceptions, but return ``FluentNone`` instances to
-indicate an error or missing data. Otherwise they should return unicode strings,
+indicate an error or missing data. Otherwise they should return strings,
 or instances of a ``FluentType`` subclass as above. Returned numbers and
 datetimes should be converted to ``FluentNumber`` or ``FluentDateType``
 subclasses using ``fluent.types.fluent_number`` and ``fluent.types.fluent_date``

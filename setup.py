@@ -1,13 +1,5 @@
 #!/usr/bin/env python
-import sys
-
 from setuptools import find_packages, setup
-
-if sys.version_info < (3, 4):
-    old_python_requires = ['singledispatch>=3.4']
-else:
-    # functools.singledispatch is in stdlib from Python 3.4 onwards.
-    old_python_requires = []
 
 setup(name='fluent_compiler',
       version='0.3',
@@ -24,8 +16,6 @@ setup(name='fluent_compiler',
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
           'License :: OSI Approved :: Apache Software License',
-          'Programming Language :: Python :: 2.7',
-          'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
@@ -40,6 +30,5 @@ setup(name='fluent_compiler',
           'attrs>=19.3.0',
           'babel>=2.8.0',
           'pytz',
-          'six',
-      ] + old_python_requires,
+      ],
       )
