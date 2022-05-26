@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import warnings
 from datetime import date, datetime
 from decimal import Decimal
@@ -13,39 +10,39 @@ from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pa
 FORMAT_STYLE_DECIMAL = "decimal"
 FORMAT_STYLE_CURRENCY = "currency"
 FORMAT_STYLE_PERCENT = "percent"
-FORMAT_STYLE_OPTIONS = set([
+FORMAT_STYLE_OPTIONS = {
     FORMAT_STYLE_DECIMAL,
     FORMAT_STYLE_CURRENCY,
     FORMAT_STYLE_PERCENT,
-])
+}
 
 CURRENCY_DISPLAY_SYMBOL = "symbol"
 CURRENCY_DISPLAY_CODE = "code"
 CURRENCY_DISPLAY_NAME = "name"
-CURRENCY_DISPLAY_OPTIONS = set([
+CURRENCY_DISPLAY_OPTIONS = {
     CURRENCY_DISPLAY_SYMBOL,
     CURRENCY_DISPLAY_CODE,
     CURRENCY_DISPLAY_NAME,
-])
+}
 
-DATE_STYLE_OPTIONS = set([
+DATE_STYLE_OPTIONS = {
     "full",
     "long",
     "medium",
     "short",
     None,
-])
+}
 
-TIME_STYLE_OPTIONS = set([
+TIME_STYLE_OPTIONS = {
     "full",
     "long",
     "medium",
     "short",
     None,
-])
+}
 
 
-class FluentType(object):
+class FluentType:
     def format(self, locale):
         raise NotImplementedError()
 
@@ -61,11 +58,11 @@ class FluentNone(FluentType):
         return self.name or "???"
 
     def __repr__(self):
-        return '<FluentNone({!r})>'.format(self.name)
+        return f"<FluentNone({self.name!r})>"
 
 
 @attr.s
-class NumberFormatOptions(object):
+class NumberFormatOptions:
     # We follow the Intl.NumberFormat parameter names here,
     # rather than using underscores as per PEP8, so that
     # we can stick to Fluent spec more easily.
@@ -73,11 +70,15 @@ class NumberFormatOptions(object):
     # Keyword args available to FTL authors must be synced to fluent_number.ftl_arg_spec below
 
     # See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NumberFormat
-    style = attr.ib(default=FORMAT_STYLE_DECIMAL,
-                    validator=attr.validators.in_(FORMAT_STYLE_OPTIONS))
+    style = attr.ib(
+        default=FORMAT_STYLE_DECIMAL,
+        validator=attr.validators.in_(FORMAT_STYLE_OPTIONS),
+    )
     currency = attr.ib(default=None)
-    currencyDisplay = attr.ib(default=CURRENCY_DISPLAY_SYMBOL,
-                              validator=attr.validators.in_(CURRENCY_DISPLAY_OPTIONS))
+    currencyDisplay = attr.ib(
+        default=CURRENCY_DISPLAY_SYMBOL,
+        validator=attr.validators.in_(CURRENCY_DISPLAY_OPTIONS),
+    )
     useGrouping = attr.ib(default=True)
     minimumIntegerDigits = attr.ib(default=None)
     minimumFractionDigits = attr.ib(default=None)
@@ -90,16 +91,16 @@ class FluentNumber(FluentType):
 
     default_number_format_options = NumberFormatOptions()
 
-    def __new__(cls,
-                value,
-                **kwargs):
-        self = super(FluentNumber, cls).__new__(cls, value)
+    def __new__(cls, value, **kwargs):
+        self = super().__new__(cls, value)
         return self._init(value, kwargs)
 
     def _init(self, value, kwargs):
-        self.options = merge_options(NumberFormatOptions,
-                                     getattr(value, 'options', self.default_number_format_options),
-                                     kwargs)
+        self.options = merge_options(
+            NumberFormatOptions,
+            getattr(value, "options", self.default_number_format_options),
+            kwargs,
+        )
 
         if self.options.style == FORMAT_STYLE_CURRENCY and self.options.currency is None:
             raise ValueError("currency must be provided")
@@ -116,10 +117,10 @@ class FluentNumber(FluentType):
             pattern = self._apply_options(base_pattern)
             return pattern.apply(self, locale)
         elif self.options.style == FORMAT_STYLE_CURRENCY:
-            if self.options.currencyDisplay == 'name':
+            if self.options.currencyDisplay == "name":
                 return self._format_currency_long_name(locale)
             else:
-                base_pattern = locale.currency_formats['standard']
+                base_pattern = locale.currency_formats["standard"]
                 pattern = self._apply_options(base_pattern)
                 return pattern.apply(self, locale, currency=self.options.currency, currency_digits=False)
 
@@ -142,27 +143,34 @@ class FluentNumber(FluentType):
             # work:
             def replacer(s):
                 return s.replace("¤", "¤¤")
-            pattern.suffix = (replacer(pattern.suffix[0]),
-                              replacer(pattern.suffix[1]))
-            pattern.prefix = (replacer(pattern.prefix[0]),
-                              replacer(pattern.prefix[1]))
-        if (self.options.minimumSignificantDigits is not None
-                or self.options.maximumSignificantDigits is not None):
+
+            pattern.suffix = (replacer(pattern.suffix[0]), replacer(pattern.suffix[1]))
+            pattern.prefix = (replacer(pattern.prefix[0]), replacer(pattern.prefix[1]))
+        if self.options.minimumSignificantDigits is not None or self.options.maximumSignificantDigits is not None:
             # This triggers babel routines into 'significant digits' mode:
-            pattern.pattern = '@'
+            pattern.pattern = "@"
             # We then manually set int_prec, and leave the rest as they are.
-            min_digits = (1 if self.options.minimumSignificantDigits is None
-                          else self.options.minimumSignificantDigits)
-            max_digits = (min_digits if self.options.maximumSignificantDigits is None
-                          else self.options.maximumSignificantDigits)
+            min_digits = 1 if self.options.minimumSignificantDigits is None else self.options.minimumSignificantDigits
+            max_digits = (
+                min_digits if self.options.maximumSignificantDigits is None else self.options.maximumSignificantDigits
+            )
             pattern.int_prec = (min_digits, max_digits)
         else:
             if self.options.minimumIntegerDigits is not None:
-                pattern.int_prec = (self.options.minimumIntegerDigits, pattern.int_prec[1])
+                pattern.int_prec = (
+                    self.options.minimumIntegerDigits,
+                    pattern.int_prec[1],
+                )
             if self.options.minimumFractionDigits is not None:
-                pattern.frac_prec = (self.options.minimumFractionDigits, pattern.frac_prec[1])
+                pattern.frac_prec = (
+                    self.options.minimumFractionDigits,
+                    pattern.frac_prec[1],
+                )
             if self.options.maximumFractionDigits is not None:
-                pattern.frac_prec = (pattern.frac_prec[0], self.options.maximumFractionDigits)
+                pattern.frac_prec = (
+                    pattern.frac_prec[0],
+                    self.options.maximumFractionDigits,
+                )
 
         return pattern
 
@@ -179,7 +187,9 @@ class FluentNumber(FluentType):
         pattern = self._apply_options(base_pattern)
 
         number_part = pattern.apply(
-            self, locale, currency=self.options.currency,
+            self,
+            locale,
+            currency=self.options.currency,
         )
         return unit_pattern.format(number_part, display_name)
 
@@ -220,6 +230,7 @@ def merge_options(options_class, base, kwargs):
 #    instances in place of a native type and will work just the same without
 #    modification (in most cases).
 
+
 class FluentInt(FluentNumber, int):
     pass
 
@@ -244,8 +255,7 @@ def fluent_number(number, **kwargs):
     elif isinstance(number, FluentNone):
         return number
     else:
-        raise TypeError("Can't use fluent_number with object {0} of type {1}"
-                        .format(number, type(number)))
+        raise TypeError(f"Can't use fluent_number with object {number} of type {type(number)}")
 
 
 # Specify arg spec manually, for three reasons:
@@ -253,31 +263,38 @@ def fluent_number(number, **kwargs):
 #    in duplication, and in unnecessary work inside FluentNumber
 # 2. To stop 'style' and 'currency' being used inside FTL files
 # 3. To avoid needing inspection to do this work.
-fluent_number.ftl_arg_spec = (1, ['currencyDisplay',
-                                  'useGrouping',
-                                  'minimumIntegerDigits',
-                                  'minimumFractionDigits',
-                                  'maximumFractionDigits',
-                                  'minimumSignificantDigits',
-                                  'maximumSignificantDigits'])
+fluent_number.ftl_arg_spec = (
+    1,
+    [
+        "currencyDisplay",
+        "useGrouping",
+        "minimumIntegerDigits",
+        "minimumFractionDigits",
+        "maximumFractionDigits",
+        "minimumSignificantDigits",
+        "maximumSignificantDigits",
+    ],
+)
 
 
 _UNGROUPED_PATTERN = parse_pattern("#0")
 
 
 def clone_pattern(pattern):
-    return NumberPattern(pattern.pattern,
-                         pattern.prefix,
-                         pattern.suffix,
-                         pattern.grouping,
-                         pattern.int_prec,
-                         pattern.frac_prec,
-                         pattern.exp_prec,
-                         pattern.exp_plus)
+    return NumberPattern(
+        pattern.pattern,
+        pattern.prefix,
+        pattern.suffix,
+        pattern.grouping,
+        pattern.int_prec,
+        pattern.frac_prec,
+        pattern.exp_prec,
+        pattern.exp_plus,
+    )
 
 
 @attr.s
-class DateFormatOptions(object):
+class DateFormatOptions:
     # Parameters.
     # See https://projectfluent.org/fluent/guide/functions.html#datetime
 
@@ -299,13 +316,11 @@ class DateFormatOptions(object):
     timeZoneName = attr.ib(default=None)
 
     # See https://github.com/tc39/proposal-ecma402-datetime-style
-    dateStyle = attr.ib(default=None,
-                        validator=attr.validators.in_(DATE_STYLE_OPTIONS))
-    timeStyle = attr.ib(default=None,
-                        validator=attr.validators.in_(TIME_STYLE_OPTIONS))
+    dateStyle = attr.ib(default=None, validator=attr.validators.in_(DATE_STYLE_OPTIONS))
+    timeStyle = attr.ib(default=None, validator=attr.validators.in_(TIME_STYLE_OPTIONS))
 
 
-_SUPPORTED_DATETIME_OPTIONS = ['dateStyle', 'timeStyle', 'timeZone']
+_SUPPORTED_DATETIME_OPTIONS = ["dateStyle", "timeStyle", "timeZone"]
 
 
 class FluentDateType(FluentType):
@@ -314,15 +329,13 @@ class FluentDateType(FluentType):
     # So we leave those alone, and implement another `_init_options`
     # which is called from other constructors.
     def _init_options(self, dt_obj, kwargs):
-        if 'timeStyle' in kwargs and not isinstance(self, datetime):
+        if "timeStyle" in kwargs and not isinstance(self, datetime):
             raise TypeError("timeStyle option can only be specified for datetime instances, not date instance")
 
-        self.options = merge_options(DateFormatOptions,
-                                     getattr(dt_obj, 'options', None),
-                                     kwargs)
+        self.options = merge_options(DateFormatOptions, getattr(dt_obj, "options", None), kwargs)
         for k in kwargs:
             if k not in _SUPPORTED_DATETIME_OPTIONS:
-                warnings.warn("FluentDateType option {0} is not yet supported".format(k))
+                warnings.warn(f"FluentDateType option {k} is not yet supported")
 
     def format(self, locale):
         if isinstance(self, datetime):
@@ -331,7 +344,7 @@ class FluentDateType(FluentType):
             selftz = self
 
         if self.options.dateStyle is None and self.options.timeStyle is None:
-            return format_date(selftz, format='medium', locale=locale)
+            return format_date(selftz, format="medium", locale=locale)
         elif self.options.dateStyle is None and self.options.timeStyle is not None:
             return format_time(selftz, format=self.options.timeStyle, locale=locale)
         elif self.options.dateStyle is not None and self.options.timeStyle is None:
@@ -341,12 +354,15 @@ class FluentDateType(FluentType):
             # with modifications.
             # Which datetime format do we pick? We arbitrarily pick dateStyle.
 
-            return (get_datetime_format(self.options.dateStyle, locale=locale)
-                    .replace("'", "")
-                    .replace('{0}', format_time(selftz, self.options.timeStyle, tzinfo=None,
-                                                locale=locale))
-                    .replace('{1}', format_date(selftz, self.options.dateStyle, locale=locale))
-                    )
+            return (
+                get_datetime_format(self.options.dateStyle, locale=locale)
+                .replace("'", "")
+                .replace(
+                    "{0}",
+                    format_time(selftz, self.options.timeStyle, tzinfo=None, locale=locale),
+                )
+                .replace("{1}", format_date(selftz, self.options.dateStyle, locale=locale))
+            )
 
 
 def _ensure_datetime_tzinfo(dt, tzinfo=None):
@@ -358,7 +374,7 @@ def _ensure_datetime_tzinfo(dt, tzinfo=None):
         dt = dt.replace(tzinfo=pytz.UTC)
     if tzinfo is not None:
         dt = dt.astimezone(get_timezone(tzinfo))
-        if hasattr(tzinfo, 'normalize'):  # pytz
+        if hasattr(tzinfo, "normalize"):  # pytz
             dt = tzinfo.normalize(datetime)
     return dt
 
@@ -374,9 +390,16 @@ class FluentDate(FluentDateType, date):
 class FluentDateTime(FluentDateType, datetime):
     @classmethod
     def from_date_time(cls, dt_obj, **kwargs):
-        obj = cls(dt_obj.year, dt_obj.month, dt_obj.day,
-                  dt_obj.hour, dt_obj.minute, dt_obj.second,
-                  dt_obj.microsecond, tzinfo=dt_obj.tzinfo)
+        obj = cls(
+            dt_obj.year,
+            dt_obj.month,
+            dt_obj.day,
+            dt_obj.hour,
+            dt_obj.minute,
+            dt_obj.second,
+            dt_obj.microsecond,
+            tzinfo=dt_obj.tzinfo,
+        )
         obj._init_options(dt_obj, kwargs)
         return obj
 
@@ -391,21 +414,23 @@ def fluent_date(dt, **kwargs):
     elif isinstance(dt, FluentNone):
         return dt
     else:
-        raise TypeError("Can't use fluent_date with object {0} of type {1}"
-                        .format(dt, type(dt)))
+        raise TypeError(f"Can't use fluent_date with object {dt} of type {type(dt)}")
 
 
-fluent_date.ftl_arg_spec = (1,
-                            ['hour12',
-                             'weekday',
-                             'era',
-                             'year',
-                             'month',
-                             'day',
-                             'hour',
-                             'minute',
-                             'second',
-                             'timeZoneName',
-                             'dateStyle',
-                             'timeStyle',
-                             ])
+fluent_date.ftl_arg_spec = (
+    1,
+    [
+        "hour12",
+        "weekday",
+        "era",
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "second",
+        "timeZoneName",
+        "dateStyle",
+        "timeStyle",
+    ],
+)

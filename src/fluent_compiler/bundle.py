@@ -1,11 +1,9 @@
-from __future__ import absolute_import, unicode_literals
-
 from .compiler import compile_messages
 from .resource import FtlResource
 from .utils import ATTRIBUTE_SEPARATOR, TERM_SIGIL
 
 
-class FluentBundle(object):
+class FluentBundle:
     """
     A FluentBundle is a single-language store of translations.  It can
     format translation units (entities) to strings.
@@ -17,6 +15,7 @@ class FluentBundle(object):
     the Fluent syntax for more information.
 
     """
+
     def __init__(self, locale, resources, functions=None, use_isolating=True, escapers=None):
         self.locale = locale
         compiled_ftl = compile_messages(
@@ -24,7 +23,8 @@ class FluentBundle(object):
             resources,
             use_isolating=use_isolating,
             functions=functions,
-            escapers=escapers)
+            escapers=escapers,
+        )
         self._compiled_messages = compiled_ftl.message_functions
         self._compilation_errors = compiled_ftl.errors
 
@@ -35,7 +35,7 @@ class FluentBundle(object):
             [FtlResource.from_string(text)],
             use_isolating=use_isolating,
             functions=functions,
-            escapers=escapers
+            escapers=escapers,
         )
 
     @classmethod
@@ -45,7 +45,7 @@ class FluentBundle(object):
             [FtlResource.from_file(f) for f in filenames],
             use_isolating=use_isolating,
             functions=functions,
-            escapers=escapers
+            escapers=escapers,
         )
 
     def has_message(self, message_id):

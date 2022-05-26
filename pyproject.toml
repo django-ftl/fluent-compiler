@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 120
+# required-version = '22.3.0' # see https://github.com/psf/black/issues/2493
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["fluent_compiler"]
+default_section= "THIRDPARTY"
+skip = [".tox", "dist", "build", ".git"]

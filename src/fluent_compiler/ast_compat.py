@@ -9,7 +9,6 @@ when necessary.
 """
 import ast
 
-
 # We include only the things codegen needs.
 Add = ast.Add
 Assign = ast.Assign
@@ -47,8 +46,8 @@ keyword = ast.keyword
 
 
 def traverse(ast_node, func):
-    '''
+    """
     Apply 'func' to ast_node (which is `ast.*` object)
-    '''
+    """
     for node in ast.walk(ast_node):
         func(node)
