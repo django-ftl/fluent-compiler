@@ -1,6 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
-
 from . import codegen
 from .utils import SimpleNamespace
 
@@ -15,7 +12,7 @@ def identity(value):
 
 
 # Default string join function and sentinel value
-default_join = ''.join
+default_join = "".join
 
 
 def select_always(message_id=None, **kwargs):
@@ -28,7 +25,7 @@ null_escaper = SimpleNamespace(
     escape=identity,
     mark_escaped=identity,
     join=default_join,
-    name='null_escaper',
+    name="null_escaper",
 )
 
 
@@ -53,17 +50,18 @@ def escaper_for_message(escapers, message_id):
     return null_escaper
 
 
-class RegisteredEscaper(object):
+class RegisteredEscaper:
     """
     Escaper wrapper that encapsulates logic like knowing what the escaper
     functions are called in the compiler environment.
     """
+
     def __init__(self, escaper, compiler_env):
         self._escaper = escaper
         self._compiler_env = compiler_env
 
     def __repr__(self):
-        return '<RegisteredEscaper {0}>'.format(self.name)
+        return f"<RegisteredEscaper {self.name}>"
 
     @property
     def select(self):
@@ -92,54 +90,59 @@ class RegisteredEscaper(object):
     def get_reserved_names_with_properties(self):
         # escaper.output_type, escaper.mark_escaped, escaper.escape, escaper.join
         return [
-            (self.output_type_name(),
-             self._escaper.output_type,
-             {}),
-            (self.escape_name(),
-             self._escaper.escape,
-             {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type}),
-            (self.mark_escaped_name(),
-             self._escaper.mark_escaped,
-             {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type}),
-            (self.join_name(),
-             self._escaper.join,
-             {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type}),
+            (self.output_type_name(), self._escaper.output_type, {}),
+            (
+                self.escape_name(),
+                self._escaper.escape,
+                {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type},
+            ),
+            (
+                self.mark_escaped_name(),
+                self._escaper.mark_escaped,
+                {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type},
+            ),
+            (
+                self.join_name(),
+                self._escaper.join,
+                {codegen.PROPERTY_RETURN_TYPE: self._escaper.output_type},
+            ),
         ]
 
     def _prefix(self):
         idx = self._compiler_env.escapers.index(self)
-        return "escaper_{0}_".format(idx)
+        return f"escaper_{idx}_"
 
     def output_type_name(self):
-        return "{0}_output_type".format(self._prefix())
+        return f"{self._prefix()}_output_type"
 
     def mark_escaped_name(self):
-        return "{0}_mark_escaped".format(self._prefix())
+        return f"{self._prefix()}_mark_escaped"
 
     def escape_name(self):
-        return "{0}_escape".format(self._prefix())
+        return f"{self._prefix()}_escape"
 
     def join_name(self):
-        return "{0}_join".format(self._prefix())
+        return f"{self._prefix()}_join"
 
 
 class EscaperJoin(codegen.StringJoin):
     def __init__(self, parts, escaper, scope):
-        super(EscaperJoin, self).__init__(parts)
+        super().__init__(parts)
         self.type = escaper.output_type
         self.escaper = escaper
         self.scope = scope
 
     def as_ast(self):
         if self.escaper.join is default_join:
-            return super(EscaperJoin, self).as_ast()
+            return super().as_ast()
         else:
             return codegen.FunctionCall(
                 self.escaper.join_name(),
                 [codegen.List(self.parts)],
                 {},
                 self.scope,
-                expr_type=self.type).as_ast()
+                expr_type=self.type,
+            ).as_ast()
 
     @classmethod
     def build(cls, parts, escaper, scope):
@@ -152,15 +155,20 @@ class EscaperJoin(codegen.StringJoin):
             if len(new_parts) > 0:
                 last_part = new_parts[-1]
                 # Merge string literals wrapped in mark_escaped calls
-                if (all((isinstance(p, codegen.FunctionCall) and
-                         p.function_name == escaper.mark_escaped_name() and
-                         isinstance(p.args[0], codegen.String))
-                        for p in [last_part, part])):
+                if all(
+                    (
+                        isinstance(p, codegen.FunctionCall)
+                        and p.function_name == escaper.mark_escaped_name()
+                        and isinstance(p.args[0], codegen.String)
+                    )
+                    for p in [last_part, part]
+                ):
                     new_parts[-1] = codegen.FunctionCall(
                         last_part.function_name,
                         [codegen.String(last_part.args[0].string_value + part.args[0].string_value)],
                         {},
-                        scope)
+                        scope,
+                    )
                     handled = True
 
             if not handled:

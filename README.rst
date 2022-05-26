@@ -8,7 +8,7 @@ fluent-compiler
     :target: https://fluent-compiler.readthedocs.io
 
 .. image:: https://github.com/django-ftl/fluent-compiler/workflows/Python%20package/badge.svg
-    :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22 
+    :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22
 
 This is a Python implementation of `Project Fluent <https://www.projectfluent.org/>`_, a localization
 framework designed to unleash the entire expressive power of natural
@@ -77,5 +77,5 @@ master branch. It has now been pulled out as a separate package. This is why
 the repo's history contains `fluent.syntax` and early versions of `fluent.runtime`,
 but the parts that are left in this repo all derive from the original version
 of `fluent.runtime` contributed by @spookylukey from `a540993a085e36a9679e12f1ee7317ddc1ece5ad <https://github.com/django-ftl/fluent-compiler/commit/a540993a085e36a9679e12f1ee7317ddc1ece5ad>`_ onwards and the new compiler implementation in `d1481d61e0bc1a28a228a4b6d5258350d436e765 <https://github.com/django-ftl/fluent-compiler/commit/d1481d61e0bc1a28a228a4b6d5258350d436e765>`_ (which is squashed version of work done over a much longer period). Thats why
-we also `corrected <https://github.com/django-ftl/fluent-compiler/commit/33c1b5b586858132d3ab7af749c2bde1bb5205b5>`_ 
+we also `corrected <https://github.com/django-ftl/fluent-compiler/commit/33c1b5b586858132d3ab7af749c2bde1bb5205b5>`_
 the copyright notice from Mozilla to Luke Plant.

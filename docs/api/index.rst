@@ -8,4 +8,3 @@ API documentation
    bundle
    compiler
    resource
-

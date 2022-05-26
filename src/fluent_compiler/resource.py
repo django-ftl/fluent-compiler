@@ -2,10 +2,11 @@ import attr
 
 
 @attr.s
-class FtlResource(object):
-    '''
+class FtlResource:
+    """
     Represents an (unparsed) FTL file (contents and optional filename)
-    '''
+    """
+
     text = attr.ib()
     filename = attr.ib(default=None)
 
@@ -14,6 +15,6 @@ class FtlResource(object):
         return cls(text)
 
     @classmethod
-    def from_file(cls, filename, encoding='utf-8'):
-        with open(filename, 'rb') as f:
+    def from_file(cls, filename, encoding="utf-8"):
+        with open(filename, "rb") as f:
             return cls(text=f.read().decode(encoding), filename=filename)

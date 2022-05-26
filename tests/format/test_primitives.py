@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 import unittest
 
 from fluent_compiler.bundle import FluentBundle
@@ -10,7 +7,10 @@ from ..utils import dedent_ftl
 
 class TestSimpleStringValue(unittest.TestCase):
     def setUp(self):
-        self.bundle = FluentBundle.from_string('en-US', dedent_ftl(r"""
+        self.bundle = FluentBundle.from_string(
+            "en-US",
+            dedent_ftl(
+                r"""
             foo               = Foo
             placeable-literal = { "Foo" } Bar
             placeable-message = { foo } Bar
@@ -28,53 +28,59 @@ class TestSimpleStringValue(unittest.TestCase):
                *[other]        Member 4
              }
             escapes = {"    "}stuff{"\u0258}\"\\end"}
-        """), use_isolating=False)
+        """
+            ),
+            use_isolating=False,
+        )
 
     def test_can_be_used_as_a_value(self):
-        val, errs = self.bundle.format('foo', {})
-        self.assertEqual(val, 'Foo')
+        val, errs = self.bundle.format("foo", {})
+        self.assertEqual(val, "Foo")
         self.assertEqual(type(val), str)
         self.assertEqual(errs, [])
 
     def test_can_be_used_in_a_placeable(self):
-        val, errs = self.bundle.format('placeable-literal', {})
-        self.assertEqual(val, 'Foo Bar')
+        val, errs = self.bundle.format("placeable-literal", {})
+        self.assertEqual(val, "Foo Bar")
         self.assertEqual(errs, [])
 
     def test_can_be_a_value_of_a_message_referenced_in_a_placeable(self):
-        val, errs = self.bundle.format('placeable-message', {})
-        self.assertEqual(val, 'Foo Bar')
+        val, errs = self.bundle.format("placeable-message", {})
+        self.assertEqual(val, "Foo Bar")
         self.assertEqual(errs, [])
 
     def test_can_be_a_selector(self):
-        val, errs = self.bundle.format('selector-literal', {})
-        self.assertEqual(val, 'Member 1')
+        val, errs = self.bundle.format("selector-literal", {})
+        self.assertEqual(val, "Member 1")
         self.assertEqual(errs, [])
 
     def test_can_be_used_as_an_attribute_value(self):
-        val, errs = self.bundle.format('bar.attr', {})
-        self.assertEqual(val, 'Bar Attribute')
+        val, errs = self.bundle.format("bar.attr", {})
+        self.assertEqual(val, "Bar Attribute")
         self.assertEqual(errs, [])
 
     def test_can_be_a_value_of_an_attribute_used_in_a_placeable(self):
-        val, errs = self.bundle.format('placeable-attr', {})
-        self.assertEqual(val, 'Bar Attribute')
+        val, errs = self.bundle.format("placeable-attr", {})
+        self.assertEqual(val, "Bar Attribute")
         self.assertEqual(errs, [])
 
     def test_can_be_a_value_of_an_attribute_used_as_a_selector(self):
-        val, errs = self.bundle.format('selector-attr', {})
-        self.assertEqual(val, 'Member 3')
+        val, errs = self.bundle.format("selector-attr", {})
+        self.assertEqual(val, "Member 3")
         self.assertEqual(errs, [])
 
     def test_escapes(self):
-        val, errs = self.bundle.format('escapes', {})
+        val, errs = self.bundle.format("escapes", {})
         self.assertEqual(val, r'    stuffɘ}"\end')
         self.assertEqual(errs, [])
 
 
 class TestComplexStringValue(unittest.TestCase):
     def setUp(self):
-        self.bundle = FluentBundle.from_string('en-US', dedent_ftl("""
+        self.bundle = FluentBundle.from_string(
+            "en-US",
+            dedent_ftl(
+                """
             foo               = Foo
             bar               = { foo }Bar
 
@@ -92,56 +98,65 @@ class TestComplexStringValue(unittest.TestCase):
                 [FooBarQuxAttribute] FooBarQux
                *[other] Other
              }
-        """), use_isolating=False)
+        """
+            ),
+            use_isolating=False,
+        )
 
     def test_can_be_used_as_a_value(self):
-        val, errs = self.bundle.format('bar', {})
-        self.assertEqual(val, 'FooBar')
+        val, errs = self.bundle.format("bar", {})
+        self.assertEqual(val, "FooBar")
         self.assertEqual(errs, [])
 
     def test_can_be_value_of_a_message_referenced_in_a_placeable(self):
-        val, errs = self.bundle.format('placeable-message', {})
-        self.assertEqual(val, 'FooBarBaz')
+        val, errs = self.bundle.format("placeable-message", {})
+        self.assertEqual(val, "FooBarBaz")
         self.assertEqual(errs, [])
 
     def test_can_be_used_as_an_attribute_value(self):
-        val, errs = self.bundle.format('baz.attr', {})
-        self.assertEqual(val, 'FooBarBazAttribute')
+        val, errs = self.bundle.format("baz.attr", {})
+        self.assertEqual(val, "FooBarBazAttribute")
         self.assertEqual(errs, [])
 
     def test_can_be_a_value_of_an_attribute_used_in_a_placeable(self):
-        val, errs = self.bundle.format('placeable-attr', {})
-        self.assertEqual(val, 'FooBarBazAttribute')
+        val, errs = self.bundle.format("placeable-attr", {})
+        self.assertEqual(val, "FooBarBazAttribute")
         self.assertEqual(errs, [])
 
     def test_can_be_a_value_of_an_attribute_used_as_a_selector(self):
-        val, errs = self.bundle.format('selector-attr', {})
-        self.assertEqual(val, 'FooBarQux')
+        val, errs = self.bundle.format("selector-attr", {})
+        self.assertEqual(val, "FooBarQux")
         self.assertEqual(errs, [])
 
 
 class TestNumbers(unittest.TestCase):
     def setUp(self):
-        self.bundle = FluentBundle.from_string('en-US', dedent_ftl("""
+        self.bundle = FluentBundle.from_string(
+            "en-US",
+            dedent_ftl(
+                """
             one           =  { 1 }
             one_point_two =  { 1.2 }
             select        =  { 1 ->
                *[0] Zero
                 [1] One
              }
-        """), use_isolating=False)
+        """
+            ),
+            use_isolating=False,
+        )
 
     def test_int_number_used_in_placeable(self):
-        val, errs = self.bundle.format('one', {})
-        self.assertEqual(val, '1')
+        val, errs = self.bundle.format("one", {})
+        self.assertEqual(val, "1")
         self.assertEqual(errs, [])
 
     def test_float_number_used_in_placeable(self):
-        val, errs = self.bundle.format('one_point_two', {})
-        self.assertEqual(val, '1.2')
+        val, errs = self.bundle.format("one_point_two", {})
+        self.assertEqual(val, "1.2")
         self.assertEqual(errs, [])
 
     def test_can_be_used_as_a_selector(self):
-        val, errs = self.bundle.format('select', {})
-        self.assertEqual(val, 'One')
+        val, errs = self.bundle.format("select", {})
+        self.assertEqual(val, "One")
         self.assertEqual(errs, [])

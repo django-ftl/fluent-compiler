@@ -6,17 +6,24 @@ from decimal import Decimal
 from .errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from .types import FluentNone, FluentType, fluent_date, fluent_number
 
-__all__ = ['handle_argument_with_escaper', 'handle_output_with_escaper', 'handle_argument',
-           'handle_output', 'FluentCyclicReferenceError', 'FluentReferenceError',
-           'FluentFormatError', 'FluentNone']
+__all__ = [
+    "handle_argument_with_escaper",
+    "handle_output_with_escaper",
+    "handle_argument",
+    "handle_output",
+    "FluentCyclicReferenceError",
+    "FluentReferenceError",
+    "FluentFormatError",
+    "FluentNone",
+]
 
 
 RETURN_TYPES = {
-    'handle_argument': object,
-    'handle_output': str,
-    'FluentReferenceError': FluentReferenceError,
-    'FluentFormatError': FluentFormatError,
-    'FluentNone': FluentNone,
+    "handle_argument": object,
+    "handle_output": str,
+    "FluentReferenceError": FluentReferenceError,
+    "FluentFormatError": FluentFormatError,
+    "FluentNone": FluentNone,
 }
 
 
@@ -30,8 +37,7 @@ def handle_argument_with_escaper(arg, name, output_type, locale, errors):
         return fluent_number(arg)
     elif isinstance(arg, (date, datetime)):
         return fluent_date(arg)
-    errors.append(TypeError("Unsupported external type: {0}, {1}"
-                            .format(name, type(arg))))
+    errors.append(TypeError(f"Unsupported external type: {name}, {type(arg)}"))
     return name
 
 
@@ -44,8 +50,7 @@ def handle_argument(arg, name, locale, errors):
         return fluent_number(arg)
     elif isinstance(arg, (date, datetime)):
         return fluent_date(arg)
-    errors.append(TypeError("Unsupported external type: {0}, {1}"
-                            .format(name, type(arg))))
+    errors.append(TypeError(f"Unsupported external type: {name}, {type(arg)}"))
     return name
 
 
@@ -59,8 +64,7 @@ def handle_output_with_escaper(val, output_type, escaper_escape, locale, errors)
     else:
         # The only way for this branch to run is whem functions return
         # objects of the wrong type.
-        raise TypeError("Cannot handle object {0} of type {1}"
-                        .format(val, type(val).__name__))
+        raise TypeError(f"Cannot handle object {val} of type {type(val).__name__}")
 
 
 def handle_output(val, locale, errors):
@@ -72,5 +76,4 @@ def handle_output(val, locale, errors):
     else:
         # The only way for this branch to run is when functions return
         # objects of the wrong type.
-        raise TypeError("Cannot handle object {0} of type {1}"
-                        .format(val, type(val).__name__))
+        raise TypeError(f"Cannot handle object {val} of type {type(val).__name__}")

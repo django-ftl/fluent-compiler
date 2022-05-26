@@ -5,6 +5,6 @@ DATETIME = fluent_date
 
 
 BUILTINS = {
-    'NUMBER': NUMBER,
-    'DATETIME': DATETIME,
+    "NUMBER": NUMBER,
+    "DATETIME": DATETIME,
 }
