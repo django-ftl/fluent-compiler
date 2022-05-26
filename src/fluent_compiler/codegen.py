@@ -233,6 +233,9 @@ _IDENTIFIER_START_RE = re.compile('^[a-zA-Z_]')
 
 
 def cleanup_name(name):
+    """
+    Convert name to a allowable identifier
+    """
     # See https://docs.python.org/2/reference/lexical_analysis.html#grammar-token-identifier
     name = _IDENTIFIER_SANITIZER_RE.sub('', name)
     if not _IDENTIFIER_START_RE.match(name):

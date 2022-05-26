@@ -3,12 +3,13 @@
 from __future__ import absolute_import, unicode_literals
 
 import ast
+import builtins
 import keyword
 import textwrap
 import unittest
 
 from ast_decompiler.decompiler import Decompiler
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis.strategies import text
 
 from fluent_compiler import codegen
@@ -45,7 +46,7 @@ def as_source_code(codegen_ast):
 
 # Stratgies
 non_keyword_text = text().filter(lambda t: t not in keyword.kwlist)
-non_builtin_text = non_keyword_text.filter(lambda t: t not in dir(__builtins__))
+non_builtin_text = non_keyword_text.filter(lambda t: t not in dir(builtins))
 
 
 class TestCodeGen(unittest.TestCase):
@@ -532,8 +533,13 @@ class TestCodeGen(unittest.TestCase):
         self.assertTrue(len(codegen.cleanup_name(t)) > 0, " for t = {!r}".format(t))
 
     @given(non_builtin_text)
+    @example("!$abc<>")
+    @example(":id")
     def test_cleanup_name_allowed_identifier(self, t):
-        self.assertTrue(allowable_name(codegen.cleanup_name(t)), " for t = {!r}".format(t))
+        cleaned = codegen.cleanup_name(t)
+        self.assertTrue(allowable_name(cleaned) or
+                        (cleaned in dir(builtins)) or
+                        keyword.iskeyword(cleaned), " for t = {!r}".format(t))
 
     def test_dict_lookup(self):
         scope = codegen.Scope()
