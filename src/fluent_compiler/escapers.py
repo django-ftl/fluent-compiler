@@ -26,6 +26,7 @@ null_escaper = SimpleNamespace(
     mark_escaped=identity,
     join=default_join,
     name="null_escaper",
+    use_isolating=None,
 )
 
 
@@ -123,6 +124,10 @@ class RegisteredEscaper:
 
     def join_name(self):
         return f"{self._prefix()}_join"
+
+    @property
+    def use_isolating(self):
+        return getattr(self._escaper, "use_isolating", None)
 
 
 class EscaperJoin(codegen.StringJoin):
