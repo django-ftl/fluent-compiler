@@ -1,8 +1,8 @@
 Changelog
 =========
 
-fluent_compiler 0.4 (under development)
----------------------------------------
+fluent_compiler 0.4 (2023-02-16)
+--------------------------------
 
 * Dropped support for Python 2.7 and Python < 3.6
 * Lots of code style cleanups using black etc.
