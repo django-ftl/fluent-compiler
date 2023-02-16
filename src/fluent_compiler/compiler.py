@@ -128,6 +128,11 @@ class CompilerEnvironment:
     def modified_for_term_reference(self, term_args=None):
         return self.modified(term_args=term_args if term_args is not None else {})
 
+    def should_use_isolating(self):
+        if self.current.escaper.use_isolating is None:
+            return self.use_isolating
+        return self.current.escaper.use_isolating
+
 
 class FtlSource:
     """
@@ -676,7 +681,7 @@ def compile_expr_pattern(pattern, block, compiler_env):
     parts = []
     subelements = pattern.elements
 
-    use_isolating = compiler_env.use_isolating and len(subelements) > 1
+    use_isolating = compiler_env.should_use_isolating() and len(subelements) > 1
 
     for element in pattern.elements:
         wrap_this_with_isolating = use_isolating and not isinstance(element, TextElement)

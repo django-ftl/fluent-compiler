@@ -121,8 +121,9 @@ This escaper uses the convention that message IDs that end with
 ``message-html``, ``message.attr-html``, and ``-term-html``, for
 example, but not ``message-html.attr``.
 
-We have set ``use_isolating=False`` here because isolation characters
-can cause problems in various HTML contexts - for example:
+We have set ``use_isolating=False`` here (which will override the
+``use_isolating`` value specified in ``compile_messages``) because isolation
+characters can cause problems in various HTML contexts - for example:
 
 ::
 
