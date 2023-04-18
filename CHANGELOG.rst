@@ -1,6 +1,11 @@
 Changelog
 =========
 
+fluent_compiler 1.0 (2023-04-18)
+--------------------------------
+
+* Tested against latest Python 3.11, and 3.12 alpha
+
 fluent_compiler 0.4 (2023-02-16)
 --------------------------------
 
