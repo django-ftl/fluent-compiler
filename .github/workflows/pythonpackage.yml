@@ -16,7 +16,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
@@ -29,6 +28,11 @@ jobs:
           - "pypy3.9"
           - "pypy3.10"
         os: [ubuntu-latest]
+        include:
+          # Python 3.6 is not available on Ubuntu 22.04,
+          # so use Ubuntu 20.04:
+          - python-version: "3.6"
+            os: ubuntu-20.04
 
 
     steps:
