@@ -2,11 +2,11 @@
 Utilities for doing Python code generation
 """
 
+import ast
 import keyword
 import platform
 import re
 
-from . import ast_compat as ast
 from .utils import allowable_keyword_arg_name, allowable_name
 
 # This module provides simple utilities for building up Python source code. It
@@ -406,7 +406,7 @@ class Function(Scope, Statement, PythonAst):
             def add_lineno(node):
                 node.lineno = self.source.row
 
-            ast.traverse(func_def, add_lineno)
+            traverse(func_def, add_lineno)
         return func_def
 
     def add_return(self, value):
@@ -857,6 +857,14 @@ def simplify(codegen_ast, simplifier):
         changes[:] = []
         rewriting_traverse(codegen_ast, rewriter)
     return codegen_ast
+
+
+def traverse(ast_node, func):
+    """
+    Apply 'func' to ast_node (which is `ast.*` object)
+    """
+    for node in ast.walk(ast_node):
+        func(node)
 
 
 def rewriting_traverse(node, func):

@@ -10,3 +10,6 @@ _build
 .benchmarks
 .hypothesis
 build
+
+# pyenv
+.python-version
