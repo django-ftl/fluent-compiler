@@ -87,10 +87,7 @@ module to construct correct code without worrying about lower level details.
 The classes in the ``codegen`` module eventually need to produce AST objects
 that can be passed to Python’s builtin `compile
 <https://docs.python.org/3/library/functions.html?highlight=compile#compile>`_
-function. The stdlib `ast <https://docs.python.org/3/library/ast.html>`_ module
-has incompatible differences between different Python versions, so we abstract
-over these in ``fluent_compiler.ast_compat`` which allows the ``codegen`` module
-to almost entirely ignore the differences in AST for different Python.
+function.
 
 In addition to these modules, there are some runtime functions and types that
 are needed by the generated Python code, found in ``fluent_compiler.runtime``.
