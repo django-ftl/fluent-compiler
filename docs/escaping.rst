@@ -24,8 +24,8 @@ passed to the ``FluentBundle`` constructor or to ``compile_messages``.
 
 An ``escaper`` is an object that defines the following set of attributes. The
 object could be a module, or a simple namespace object you could create using
-``types.SimpleNamespace`` (or ``fluent_compiler.utils.SimpleNamespace`` on Python 2), or
-an instance of a class with appropriate methods defined. The attributes are:
+``types.SimpleNamespace``, or an instance of a class with appropriate
+methods defined. The attributes are:
 
 - ``name`` - a simple text value that is used in error messages.
 

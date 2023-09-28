@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 from markupsafe import Markup, escape
 
@@ -6,7 +7,6 @@ from fluent_compiler import codegen
 from fluent_compiler.compiler import compile_messages
 from fluent_compiler.errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from fluent_compiler.resource import FtlResource
-from fluent_compiler.utils import SimpleNamespace
 
 from .test_codegen import decompile_ast_list, normalize_python
 from .utils import dedent_ftl
