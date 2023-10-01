@@ -1,5 +1,6 @@
+from types import SimpleNamespace
+
 from . import codegen
-from .utils import SimpleNamespace
 
 
 def identity(value):
