@@ -531,7 +531,7 @@ class String(Expression):
         self.string_value = string_value
 
     def as_ast(self):
-        return ast.Str(
+        return ast.Constant(
             self.string_value,
             kind=None,  # 3.8, indicates no prefix, needed only for tests
             **DEFAULT_AST_ARGS,
@@ -552,7 +552,7 @@ class Number(Expression):
         self.type = type(number)
 
     def as_ast(self):
-        return ast.Num(n=self.number, **DEFAULT_AST_ARGS)
+        return ast.Constant(self.number, **DEFAULT_AST_ARGS)
 
     def __repr__(self):
         return f"Number({repr(self.number)})"
@@ -729,7 +729,7 @@ class FunctionCall(Expression):
                     ast.keyword(
                         arg=None,
                         value=ast.Dict(
-                            keys=[ast.Str(k, kind=None, **DEFAULT_AST_ARGS) for k in kwarg_names],
+                            keys=[ast.Constant(k, kind=None, **DEFAULT_AST_ARGS) for k in kwarg_names],
                             values=[v.as_ast() for v in kwarg_values],
                             **DEFAULT_AST_ARGS,
                         ),
@@ -806,7 +806,7 @@ class NoneExpr(Expression):
     type = type(None)
 
     def as_ast(self):
-        return ast.NameConstant(value=None, **DEFAULT_AST_ARGS)
+        return ast.Constant(value=None, **DEFAULT_AST_ARGS)
 
 
 class BinaryOperator(Expression):
