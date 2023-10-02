@@ -24,6 +24,7 @@ If a new Python version changes/breaks the AST for existing features, the proces
 
 """
 import ast
+import sys
 
 # This is a very limited subset of Python AST:
 # - only the things needed by codegen.py
@@ -43,12 +44,10 @@ Index = ast.Index
 List = ast.List
 Load = ast.Load
 Module = ast.Module
-Num = ast.Num
 Or = ast.Or
 Pass = ast.Pass
 Return = ast.Return
 Store = ast.Store
-Str = ast.Str
 Subscript = ast.Subscript
 Tuple = ast.Tuple
 arguments = ast.arguments
@@ -58,10 +57,27 @@ Attribute = ast.Attribute
 Call = ast.Call
 FunctionDef = ast.FunctionDef
 Name = ast.Name
-NameConstant = ast.NameConstant
 Try = ast.Try
 arg = ast.arg
 keyword = ast.keyword
+
+
+if sys.version_info >= (3, 8):
+    Constant = ast.Constant
+else:
+    # For Python 3.6/3.7, in terms of runtime behaviour we could also use
+    # Constant for Str/Num, but this seems to trigger bugs when decompiling with
+    # ast_decompiler, which is needed by tests. So we use the more normal
+    # ast that Python 3.6/3.7 use for this code.
+    def Constant(arg, **kwargs):
+        if isinstance(arg, str):
+            return ast.Str(arg, **kwargs)
+        elif isinstance(arg, (int, float)):
+            return ast.Num(arg, **kwargs)
+        elif arg is None:
+            return ast.NameConstant(arg, **kwargs)
+        else:
+            raise NotImplementedError(f"Constant not implemented for args of type {type(arg)}")
 
 
 def traverse(ast_node, func):
