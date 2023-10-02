@@ -406,7 +406,7 @@ class Function(Scope, Statement, PythonAst):
             def add_lineno(node):
                 node.lineno = self.source.row
 
-            ast.traverse(func_def, add_lineno)
+            traverse(func_def, add_lineno)
         return func_def
 
     def add_return(self, value):
@@ -843,6 +843,14 @@ class BoolOp(BinaryOperator):
 
 class Or(BoolOp):
     op = ast.Or
+
+
+def traverse(ast_node, func):
+    """
+    Apply 'func' to ast_node (which is `ast.*` object)
+    """
+    for node in ast.walk(ast_node):
+        func(node)
 
 
 def simplify(codegen_ast, simplifier):

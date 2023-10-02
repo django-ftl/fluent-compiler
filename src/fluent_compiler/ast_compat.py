@@ -60,6 +60,7 @@ Name = ast.Name
 Try = ast.Try
 arg = ast.arg
 keyword = ast.keyword
+walk = ast.walk
 
 
 if sys.version_info >= (3, 8):
@@ -78,11 +79,3 @@ else:
             return ast.NameConstant(arg, **kwargs)
         else:
             raise NotImplementedError(f"Constant not implemented for args of type {type(arg)}")
-
-
-def traverse(ast_node, func):
-    """
-    Apply 'func' to ast_node (which is `ast.*` object)
-    """
-    for node in ast.walk(ast_node):
-        func(node)
