@@ -60,6 +60,7 @@ Name = ast.Name
 Try = ast.Try
 arg = ast.arg
 keyword = ast.keyword
+walk = ast.walk
 
 
 if sys.version_info >= (3, 8):
