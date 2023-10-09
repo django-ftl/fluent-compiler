@@ -28,11 +28,11 @@ jobs:
         - "pypy3.8"
         - "pypy3.9"
         - "pypy3.10"
-      include:
-      # Python 3.6 is not available on ubuntu-latest,
-      # so use ubuntu-20.04:
-      - python-version: "3.6"
-        os: ubuntu-20.04
+        include:
+        # Python 3.6 is not available on ubuntu-latest,
+        # so use ubuntu-20.04:
+        - python-version: "3.6"
+          os: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v3
@@ -68,11 +68,14 @@ jobs:
     - name: Lint with isort
       uses: isort/isort-action@master
     - name: Lint with flake8
+      if: success() || failure()
       run: |
         flake8 --version
         flake8
     - name: Lint with check-manifest
+      if: success() || failure()
       run: |
         check-manifest
     - name: Lint with black
+      if: success() || failure()
       uses: psf/black@stable
