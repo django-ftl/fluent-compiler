@@ -12,10 +12,11 @@ on:
 jobs:
   test:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version:
         - "3.7"
         - "3.8"
@@ -30,7 +31,7 @@ jobs:
         - "pypy3.10"
         include:
         # Python 3.6 is not available on ubuntu-latest,
-        # so use ubuntu-20.04:
+        # so use ubuntu-20.04 for it:
         - python-version: "3.6"
           os: ubuntu-20.04
 
