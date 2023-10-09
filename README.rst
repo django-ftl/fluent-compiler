@@ -50,11 +50,16 @@ See `history <https://fluent-compiler.readthedocs.io/en/latest/history.html>`_ f
 Status
 ------
 
-We are not planning major backwards incompatible changes to the interface, but
-we're also not guaranteeing stability yet. Also, the nature of the library is such
-that we expect most users will want to create their own wrappers anyway, which
-you are encouraged to do, in order to be able to absorb any backwards
-incompatible changes easily.
+fluent-compiler is a complete and very mature implementation of all the Fluent
+spec up to version 1.0 (the latest at the time of writing).
+
+In terms of API of this package, we are not planning backwards incompatible
+changes to the publicly documented interfaces, and will provide deprecation
+warnings for any changes.
+
+The nature of the library is such that we expect most users will want to create
+their own wrappers anyway, which you are encouraged to do, in order to be able
+to absorb any backwards incompatible changes easily.
 
 See the `issues list <https://github.com/django-ftl/fluent-compiler/issues>`_
 for planned features, and `CONTRIBUTING.rst <CONTRIBUTING.rst>`_ for information
