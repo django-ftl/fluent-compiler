@@ -14,7 +14,6 @@ def currency(amount, *args, **kwargs):
 
 
 class TestFluentNumber(unittest.TestCase):
-
     locale = Locale.parse("en_US")
 
     def setUp(self):
@@ -189,7 +188,6 @@ class TestFluentNumber(unittest.TestCase):
 
 
 class TestFluentDate(unittest.TestCase):
-
     locale = Locale.parse("en_US")
 
     def setUp(self):
