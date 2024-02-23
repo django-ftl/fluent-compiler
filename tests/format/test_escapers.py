@@ -40,6 +40,7 @@ class HtmlEscaper:
 # that, unlike HtmlEscaper above, the output type is not a subclass of
 # str, in order to test the implementation handles this properly.
 
+
 # We also test whether the implementation can handle subclasses
 class Markdown:
     def __init__(self, text):
