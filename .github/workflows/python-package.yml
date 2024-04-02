@@ -1,0 +1,79 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python package
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version:
+        - "3.7"
+        - "3.8"
+        - "3.9"
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "pypy3.6"
+        - "pypy3.7"
+        - "pypy3.8"
+        - "pypy3.9"
+        - "pypy3.10"
+        include:
+        # Python 3.6 is not available on ubuntu-latest,
+        # so use ubuntu-20.04 for it:
+        - python-version: "3.6"
+          os: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+    - name: Install dependencies
+      run: |
+        python -m pip install -U pip
+        pip install .
+        pip install -r requirements-test.txt
+    - name: Test with pytest
+      run: |
+        pytest
+
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - uses: pre-commit/action@v3.0.1
+
+  type:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - run: |
+        python -m pip install -U pip
+        pip install .
+        pip install -r requirements-type.txt
+    - run: |
+        mypy src/

@@ -88,7 +88,6 @@ class NumberFormatOptions:
 
 
 class FluentNumber(FluentType):
-
     default_number_format_options = NumberFormatOptions()
 
     def __new__(cls, value, **kwargs):

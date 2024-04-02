@@ -48,7 +48,6 @@ def attribute_ast_to_id(attribute, parent_ast):
 
 
 def allowable_name(ident, for_method=False, allow_builtin=False):
-
     if keyword.iskeyword(ident):
         return False
 
