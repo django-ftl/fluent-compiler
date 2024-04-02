@@ -61,7 +61,7 @@ Note a few things:
 
 We do not, in fact, generate Python code as a string, but instead generate AST
 which we can convert to executable Python functions using the builtin functions
-`compile <https://docs.python.org/3/library/functions.html#compile>`_ and `exec
+`compile <https://docs.python.org/3/library/functions.html#compile>`__ and `exec
 <https://docs.python.org/3/library/functions.html#exec>`_.
 
 Layers
@@ -86,7 +86,7 @@ module to construct correct code without worrying about lower level details.
 
 The classes in the ``codegen`` module eventually need to produce AST objects
 that can be passed to Python’s builtin `compile
-<https://docs.python.org/3/library/functions.html?highlight=compile#compile>`_
+<https://docs.python.org/3/library/functions.html?highlight=compile#compile>`__
 function. The stdlib `ast <https://docs.python.org/3/library/ast.html>`_ module
 has incompatible differences between different Python versions, so we abstract
 over these in ``fluent_compiler.ast_compat`` which allows the ``codegen`` module
