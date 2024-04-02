@@ -1,9 +1,11 @@
 Changelog
 =========
 
-Unreleased
-----------
+fluent_compiler 1.1 (2024-04-02)
+--------------------------------
 
+* Fixed crasher with variable re-use when looking up the same argument more than
+  once. Thanks @ggindinson for bug report and PR.
 * Dropped Python 3.6 support
 
 fluent_compiler 1.0 (2023-04-18)
