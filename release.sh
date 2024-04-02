@@ -17,3 +17,6 @@ python3 setup.py bdist_wheel --python-tag=py3 || exit 1
 
 VERSION=$(./setup.py --version) || exit 1
 twine upload dist/fluent_compiler-$VERSION.tar.gz dist/fluent_compiler-$VERSION-py3-none-any.whl || exit 1
+git tag v$VERSION || exit 1
+git push || exit 1
+git push --tags || exit 1
