@@ -1278,3 +1278,18 @@ class TestCompilerEscaping(CompilerTestMixin, unittest.TestCase):
             self.locale,
             escapers=[html_escaper, html_escaper],
         )
+
+    def test_variable_reuse(self):
+        code, errs = self.compile_messages(
+            """
+            example = My name is { $name ->
+                [Peter] Peter11
+               *[other] Jane11
+              }
+              My gender is { $name ->
+                [Peter] Male
+               *[other] Female
+              }
+              """
+        )
+        assert not errs
