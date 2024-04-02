@@ -1279,7 +1279,7 @@ class TestCompilerEscaping(CompilerTestMixin, unittest.TestCase):
             escapers=[html_escaper, html_escaper],
         )
 
-    def test_variable_reuse(self):
+    def test_variable_reuse_for_arg_lookup(self):
         code, errs = self.compile_messages(
             """
             example = My name is { $name ->
@@ -1293,3 +1293,26 @@ class TestCompilerEscaping(CompilerTestMixin, unittest.TestCase):
               """
         )
         assert not errs
+        # $name should only be looked up once
+        self.assertCodeEqual(
+            code,
+            """
+            def example(message_args, errors):
+                try:
+                    _arg = message_args['name']
+                except (LookupError, TypeError):
+                    errors.append(FluentReferenceError('<string>:2:24: Unknown external: name'))
+                    _arg = FluentNone('name')
+                _plural_form = plural_form_for_number(_arg)
+                if _arg == 'Peter':
+                    _ret = 'Peter11'
+                else:
+                    _ret = 'Jane11'
+                _plural_form2 = plural_form_for_number(_arg)
+                if _arg == 'Peter':
+                    _ret2 = 'Male'
+                else:
+                    _ret2 = 'Female'
+                return f'My name is {_ret}\\nMy gender is {_ret2}'
+        """,
+        )
