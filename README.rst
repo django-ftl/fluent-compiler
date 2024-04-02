@@ -1,14 +1,15 @@
 fluent-compiler
 ===============
 
-.. image:: https://badge.fury.io/py/fluent-compiler.svg
-    :target: https://badge.fury.io/py/fluent-compiler
+|badge_fury| |badge_rtd| |badge_pypi|
 
-.. image:: https://readthedocs.org/projects/fluent-compiler/badge/?version=latest&style=flat
-    :target: https://fluent-compiler.readthedocs.io
+.. |badge_fury| image:: https://badge.fury.io/py/fluent-compiler.svg
+   :target: https://badge.fury.io/py/fluent-compiler
+.. |badge_rtd| image:: https://readthedocs.org/projects/fluent-compiler/badge/?version=latest&style=flat
+   :target: https://fluent-compiler.readthedocs.io
+.. |badge_pypi| image:: https://github.com/django-ftl/fluent-compiler/workflows/Python%20package/badge.svg
+   :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22
 
-.. image:: https://github.com/django-ftl/fluent-compiler/workflows/Python%20package/badge.svg
-    :target: https://github.com/django-ftl/fluent-compiler/actions?query=workflow%3A%22Python+package%22
 
 This is a Python implementation of `Project Fluent <https://www.projectfluent.org/>`_, a localization
 framework designed to unleash the entire expressive power of natural
