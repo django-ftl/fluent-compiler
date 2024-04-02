@@ -297,9 +297,7 @@ class Block(PythonAstList):
             else:
                 if statement.parent_block != self:
                     raise AssertionError(
-                        "Block {} is already child of {}, can't reassign to {}".format(
-                            statement, statement.parent_block, self
-                        )
+                        f"Block {statement} is already child of {statement.parent_block}, can't reassign to {self}"
                     )
 
     # Safe alternatives to Block.statements being manipulated directly:

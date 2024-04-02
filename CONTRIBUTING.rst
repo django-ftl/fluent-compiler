@@ -35,9 +35,8 @@ development:
 If all that is successful, you are in good shape to start developing!
 
 We also have several linters and code formatters that we require use of,
-including `flake8 <http://flake8.pycqa.org/en/latest/>`_, `isort
-<https://github.com/timothycrosley/isort#readme>`_ and `black
-<https://github.com/psf/black>`_. These are most easily add by using
+including `ruff <https://github.com/astral-sh/ruff>`_ and `black
+<https://github.com/psf/black>`_. These are most easily added by using
 `pre-commit <https://pre-commit.com/>`_:
 
 * Install pre-commit globally e.g. ``pipx install pre-commit`` if you

@@ -48,7 +48,6 @@ def attribute_ast_to_id(attribute, parent_ast):
 
 
 def allowable_name(ident, for_method=False, allow_builtin=False):
-
     if keyword.iskeyword(ident):
         return False
 
@@ -130,17 +129,13 @@ def args_match(function_name, args, kwargs, arg_spec):
         if len_args > positional_arg_count:
             errors.append(
                 TypeError(
-                    "{}() takes {} positional arguments but {} were given".format(
-                        function_name, positional_arg_count, len_args
-                    )
+                    f"{function_name}() takes {positional_arg_count} positional arguments but {len_args} were given"
                 )
             )
         elif len_args < positional_arg_count:
             errors.append(
                 TypeError(
-                    "{}() takes {} positional arguments but {} were given".format(
-                        function_name, positional_arg_count, len_args
-                    )
+                    f"{function_name}() takes {positional_arg_count} positional arguments but {len_args} were given"
                 )
             )
             match = False
@@ -165,7 +160,7 @@ def reference_to_id(ref, ignore_attributes=False):
         start = ref.id.name
 
     if not ignore_attributes and ref.attribute:
-        return "".join([start, ATTRIBUTE_SEPARATOR, ref.attribute.name])
+        return f"{start}{ATTRIBUTE_SEPARATOR}{ref.attribute.name}"
     return start
 
 

@@ -10,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  test:
 
     runs-on: ${{ matrix.os }}
     strategy:
@@ -22,17 +22,11 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-          - "pypy3.6"
           - "pypy3.7"
           - "pypy3.8"
           - "pypy3.9"
           - "pypy3.10"
         os: [ubuntu-latest]
-        include:
-          # Python 3.6 is not available on Ubuntu 22.04,
-          # so use Ubuntu 20.04:
-          - python-version: "3.6"
-            os: ubuntu-20.04
 
 
     steps:
@@ -49,51 +43,29 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8
         pip install -e .
         pip install -r requirements.txt
         pip install -r requirements-test.txt
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --statistics
     - name: Test with pytest
       run: |
         pytest
 
   linters:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.9"
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-linters.txt') }}
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-linters.txt
-      - name: Run isort
-        run: |
-          isort --version
-          isort -c .
-      - name: Run flake8
-        if: failure() || success()
-        run: |
-          flake8 --version
-          flake8
-      - name: Run check-manifest
-        if: failure() || success()
-        run: |
-          check-manifest
-      - uses: psf/black@stable
-        with:
-          version: "22.3.0"
-        if: failure() || success()
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/pre-commit
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+    - name: Install dependencies
+      run: |
+        pip install pre-commit
+    - name: pre-commit linters
+      run: pre-commit run --all-files --show-diff-on-failure --color=always

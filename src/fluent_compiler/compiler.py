@@ -731,9 +731,7 @@ def compile_term(term, block, compiler_env, new_escaper, term_args=None):
     if not escapers_compatible(current_escaper, new_escaper):
         term_id = ast_to_id(term)
         error = TypeError(
-            "Escaper {} for term {} cannot be used from calling context with {} escaper".format(
-                new_escaper.name, term_id, current_escaper.name
-            )
+            f"Escaper {new_escaper.name} for term {term_id} cannot be used from calling context with {current_escaper.name} escaper"
         )
         add_static_msg_error(block, error)
         compiler_env.add_current_message_error(error)
@@ -757,10 +755,7 @@ def compile_expr_term_reference(reference, block, compiler_env):
 
         if args:
             args_err = FluentFormatError(
-                "{}: Ignored positional arguments passed to term '{}'".format(
-                    display_ast_location(reference.arguments, compiler_env),
-                    reference_to_id(reference),
-                )
+                f"{display_ast_location(reference.arguments, compiler_env)}: Ignored positional arguments passed to term '{reference_to_id(reference)}'"
             )
             add_static_msg_error(block, args_err)
             compiler_env.add_current_message_error(args_err)
@@ -1026,9 +1021,7 @@ def do_message_call(msg_id, block, compiler_env):
     new_escaper = compiler_env.escaper_for_message(msg_id)
     if not escapers_compatible(current_escaper, new_escaper):
         error = TypeError(
-            "Escaper {} for message {} cannot be used from calling context with {} escaper".format(
-                new_escaper.name, msg_id, current_escaper.name
-            )
+            f"Escaper {new_escaper.name} for message {msg_id} cannot be used from calling context with {current_escaper.name} escaper"
         )
         add_static_msg_error(block, error)
         compiler_env.add_current_message_error(error)

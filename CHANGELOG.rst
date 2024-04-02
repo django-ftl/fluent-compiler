@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Dropped Python 3.6 support
+
 fluent_compiler 1.0 (2023-04-18)
 --------------------------------
 

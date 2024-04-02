@@ -1,7 +1,7 @@
 Release process
 ===============
 
-* Tests, including flake8, isort and check-manifest
+* Tests, including linters and check-manifest
 
 * Update CHANGELOG.rst, removing "(in development)" and adding date
 
