@@ -130,7 +130,7 @@ def test_single_string_gettext(gettext_translations, benchmark):
         "Hello I am a single string literal",
     )
     assert result == "Hello I am a single string literal in Polish"
-    assert type(result) is str
+    assert type(result) is str  # noqa: E721
 
 
 def test_single_string_fluent_interpreter_cached(interpreting_fluent_bundle, benchmark):
@@ -140,7 +140,7 @@ def test_single_string_fluent_interpreter_cached(interpreting_fluent_bundle, ben
     message_val = interpreting_fluent_bundle.get_message("single-string-literal").value
     result = benchmark(interpreting_fluent_bundle.format_pattern, message_val)
     assert result[0] == "Hello I am a single string literal in Polish"
-    assert type(result[0]) is str
+    assert type(result[0]) is str  # noqa: E721
 
 
 def test_single_string_fluent_interpreter(interpreting_fluent_bundle, benchmark):
@@ -151,13 +151,13 @@ def test_single_string_fluent_interpreter(interpreting_fluent_bundle, benchmark)
         )
     )
     assert result[0] == "Hello I am a single string literal in Polish"
-    assert type(result[0]) is str
+    assert type(result[0]) is str  # noqa: E721
 
 
 def test_single_string_fluent_compiler(compiling_fluent_bundle, benchmark):
     result = benchmark(compiling_fluent_bundle.format, "single-string-literal")
     assert result[0] == "Hello I am a single string literal in Polish"
-    assert type(result[0]) is str
+    assert type(result[0]) is str  # noqa: E721
 
 
 def test_single_interpolation_gettext(gettext_translations, benchmark):
@@ -166,7 +166,7 @@ def test_single_interpolation_gettext(gettext_translations, benchmark):
     args = {"username": "Mary"}
     result = benchmark(lambda: t("Hello %(username)s, welcome to our website!") % args)
     assert result == "Hello Mary, welcome to our website! in Polish"
-    assert type(result) is str
+    assert type(result) is str  # noqa: E721
 
 
 def test_single_interpolation_fluent_interpreter(interpreting_fluent_bundle, benchmark):
@@ -177,14 +177,14 @@ def test_single_interpolation_fluent_interpreter(interpreting_fluent_bundle, ben
         )
     )
     assert result[0] == "Hello Mary, welcome to our website! in Polish"
-    assert type(result[0]) is str
+    assert type(result[0]) is str  # noqa: E721
 
 
 def test_single_interpolation_fluent_compiler(compiling_fluent_bundle, benchmark):
     args = {"username": "Mary"}
     result = benchmark(compiling_fluent_bundle.format, "single-interpolation", args)
     assert result[0] == "Hello Mary, welcome to our website! in Polish"
-    assert type(result[0]) is str
+    assert type(result[0]) is str  # noqa: E721
 
 
 def test_plural_form_select_gettext(gettext_translations, benchmark):

@@ -66,10 +66,10 @@ walk = ast.walk
 if sys.version_info >= (3, 8):
     Constant = ast.Constant
 else:
-    # For Python 3.6/3.7, in terms of runtime behaviour we could also use
+    # For Python 3.7, in terms of runtime behaviour we could also use
     # Constant for Str/Num, but this seems to trigger bugs when decompiling with
     # ast_decompiler, which is needed by tests. So we use the more normal
-    # ast that Python 3.6/3.7 use for this code.
+    # ast that Python 3.7 use for this code.
     def Constant(arg, **kwargs):
         if isinstance(arg, str):
             return ast.Str(arg, **kwargs)
