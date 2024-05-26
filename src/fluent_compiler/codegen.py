@@ -167,7 +167,7 @@ class Scope:
             return final
 
         if function_arg:
-            if requested in self.function_arg_reserved_names():
+            if self.is_name_reserved_function_arg(requested):
                 assert requested not in self.names_in_use()
                 return _add(requested)
             if self.is_name_reserved(requested):
