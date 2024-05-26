@@ -122,14 +122,35 @@ class Scope:
             names = names | self.parent_scope.names_in_use()
         return names
 
+    def is_name_in_use(self, name: str) -> bool:
+        if name in self.names:
+            return True
+
+        if self.parent_scope is None:
+            return False
+
+        return self.parent_scope.is_name_in_use(name)
+
     def function_arg_reserved_names(self):
         names = self._function_arg_reserved_names
         if self.parent_scope is not None:
             names = names | self.parent_scope.function_arg_reserved_names()
         return names
 
+    def is_name_reserved_function_arg(self, name: str) -> bool:
+        if name in self._function_arg_reserved_names:
+            return True
+
+        if self.parent_scope is None:
+            return False
+
+        return self.parent_scope.is_name_reserved_function_arg(name)
+
     def all_reserved_names(self):
         return self.names_in_use() | self.function_arg_reserved_names()
+
+    def is_name_reserved(self, name: str) -> bool:
+        return self.is_name_in_use(name) or self.is_name_reserved_function_arg(name)
 
     def reserve_name(self, requested, function_arg=False, is_builtin=False, properties=None):
         """
