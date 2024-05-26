@@ -168,7 +168,7 @@ class Scope:
 
         if function_arg:
             if self.is_name_reserved_function_arg(requested):
-                assert requested not in self.names_in_use()
+                assert not self.is_name_in_use(requested)
                 return _add(requested)
             if self.is_name_reserved(requested):
                 raise AssertionError(f"Cannot use '{requested}' as argument name as it is already in use")
@@ -332,7 +332,7 @@ class Block(PythonAstList):
 
            x = value
         """
-        if name not in self.scope.names_in_use():
+        if not self.scope.is_name_in_use(name):
             raise AssertionError(f"Cannot assign to unreserved name '{name}'")
 
         if self.scope.has_assignment(name):
@@ -391,7 +391,7 @@ class Function(Scope, Statement, PythonAst):
         if args is None:
             args = ()
         for arg in args:
-            if arg in self.names_in_use():
+            if self.is_name_in_use(arg):
                 raise AssertionError(f"Can't use '{arg}' as function argument name because it shadows other names")
             self.reserve_name(arg, function_arg=True)
         self.args = args
@@ -687,7 +687,7 @@ class VariableReference(Expression):
     child_elements = []
 
     def __init__(self, name, scope):
-        if name not in scope.names_in_use():
+        if not scope.is_name_in_use(name):
             raise AssertionError(f"Cannot refer to undefined variable '{name}'")
         self.name = name
         self.type = scope.get_name_properties(name).get(PROPERTY_TYPE, UNKNOWN_TYPE)
@@ -708,7 +708,7 @@ class FunctionCall(Expression):
     child_elements = ["args", "kwargs"]
 
     def __init__(self, function_name, args, kwargs, scope, expr_type=UNKNOWN_TYPE):
-        if function_name not in scope.names_in_use():
+        if not scope.is_name_in_use(function_name):
             raise AssertionError(f"Cannot call unknown function '{function_name}'")
         self.function_name = function_name
         self.args = list(args)
