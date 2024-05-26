@@ -160,15 +160,21 @@ class Scope:
         # take into account parent scope when assigning names.
 
         used = self.all_reserved_names()
+
         # We need to also protect against using keywords ('class', 'def' etc.)
         # i.e. count all keywords as 'used'.
         # However, some builtins are also keywords (e.g. 'None'), and so
         # if a builtin is being reserved, don't check against the keyword list
         if not is_builtin:
             used = used | set(keyword.kwlist)
-        while attempt in used:
+
+        def _is_name_allowed(name: str) -> bool:
+            return name not in used
+
+        while not _is_name_allowed(attempt):
             attempt = cleaned + str(count)
             count += 1
+
         return _add(attempt)
 
     def reserve_function_arg_name(self, name):
