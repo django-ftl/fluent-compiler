@@ -65,7 +65,7 @@ class TestCodeGen(unittest.TestCase):
         scope.reserve_function_arg_name("arg_name")
         scope.reserve_name("myfunc")
         func = codegen.Function("myfunc", args=["arg_name"], parent_scope=scope)
-        self.assertNotIn("arg_name2", func.all_reserved_names())
+        self.assertFalse(func.is_name_reserved("arg_name2"))
 
     def test_reserve_name_nested(self):
         parent = codegen.Scope()

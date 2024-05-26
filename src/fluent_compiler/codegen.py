@@ -170,7 +170,7 @@ class Scope:
             if requested in self.function_arg_reserved_names():
                 assert requested not in self.names_in_use()
                 return _add(requested)
-            if requested in self.all_reserved_names():
+            if self.is_name_reserved(requested):
                 raise AssertionError(f"Cannot use '{requested}' as argument name as it is already in use")
 
         cleaned = cleanup_name(requested)
@@ -180,8 +180,6 @@ class Scope:
         # To avoid shadowing of global names in local scope, we
         # take into account parent scope when assigning names.
 
-        used = self.all_reserved_names()
-
         def _is_name_allowed(name: str) -> bool:
             # We need to also protect against using keywords ('class', 'def' etc.)
             # i.e. count all keywords as 'used'.
@@ -190,7 +188,7 @@ class Scope:
             if (not is_builtin) and keyword.iskeyword(name):
                 return False
 
-            return name not in used
+            return not self.is_name_reserved(name)
 
         while not _is_name_allowed(attempt):
             attempt = cleaned + str(count)
@@ -207,7 +205,7 @@ class Scope:
         # To keep things simple, and the generated code predictable, we reserve
         # names for all function arguments in a separate scope, and insist on
         # the exact names
-        if name in self.all_reserved_names():
+        if self.is_name_reserved(name):
             raise AssertionError(f"Can't reserve '{name}' as function arg name as it is already reserved")
         self._function_arg_reserved_names.add(name)
 
