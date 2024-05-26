@@ -17,4 +17,5 @@ recursive-include tests *.py
 recursive-include tools *.md
 recursive-include tools *.py
 recursive-include tools *.txt
+recursive-include tools *.ftl
 prune docs/_build
