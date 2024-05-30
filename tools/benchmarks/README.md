@@ -28,3 +28,12 @@ platform, you might need to use `sudo`.
 
 And look at prof.svg in a browser. Note that this diagram includes the fixture
 setup, warmup and calibration phases which you should ignore.
+
+This directory also contains generate_ftl_file.py, which can be used to generate
+files for benchmarking against. It can be run a python file:
+
+    $ python generate_ftl_file.py outfile.ftl
+
+For full command line options, use:
+
+    $ python generate_ftl_file.py -h

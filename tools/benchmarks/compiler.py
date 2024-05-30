@@ -20,6 +20,11 @@ def test_simple_message(benchmark):
     benchmark(lambda: compile_messages("en", resources))
 
 
+def test_file_with_10k_items(benchmark):
+    resources = [FtlResource.from_file(this_dir + "/10k_items.ftl")]
+    benchmark(lambda: compile_messages("en", resources))
+
+
 def test_term_inlining(benchmark):
     resources = [
         FtlResource(
