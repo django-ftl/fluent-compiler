@@ -116,20 +116,26 @@ class Scope:
         self._properties = {}
         self._assignments = {}
 
-    def names_in_use(self):
-        names = self.names
-        if self.parent_scope is not None:
-            names = names | self.parent_scope.names_in_use()
-        return names
+    def is_name_in_use(self, name: str) -> bool:
+        if name in self.names:
+            return True
 
-    def function_arg_reserved_names(self):
-        names = self._function_arg_reserved_names
-        if self.parent_scope is not None:
-            names = names | self.parent_scope.function_arg_reserved_names()
-        return names
+        if self.parent_scope is None:
+            return False
 
-    def all_reserved_names(self):
-        return self.names_in_use() | self.function_arg_reserved_names()
+        return self.parent_scope.is_name_in_use(name)
+
+    def is_name_reserved_function_arg(self, name: str) -> bool:
+        if name in self._function_arg_reserved_names:
+            return True
+
+        if self.parent_scope is None:
+            return False
+
+        return self.parent_scope.is_name_reserved_function_arg(name)
+
+    def is_name_reserved(self, name: str) -> bool:
+        return self.is_name_in_use(name) or self.is_name_reserved_function_arg(name)
 
     def reserve_name(self, requested, function_arg=False, is_builtin=False, properties=None):
         """
@@ -146,10 +152,10 @@ class Scope:
             return final
 
         if function_arg:
-            if requested in self.function_arg_reserved_names():
-                assert requested not in self.names_in_use()
+            if self.is_name_reserved_function_arg(requested):
+                assert not self.is_name_in_use(requested)
                 return _add(requested)
-            if requested in self.all_reserved_names():
+            if self.is_name_reserved(requested):
                 raise AssertionError(f"Cannot use '{requested}' as argument name as it is already in use")
 
         cleaned = cleanup_name(requested)
@@ -159,16 +165,20 @@ class Scope:
         # To avoid shadowing of global names in local scope, we
         # take into account parent scope when assigning names.
 
-        used = self.all_reserved_names()
-        # We need to also protect against using keywords ('class', 'def' etc.)
-        # i.e. count all keywords as 'used'.
-        # However, some builtins are also keywords (e.g. 'None'), and so
-        # if a builtin is being reserved, don't check against the keyword list
-        if not is_builtin:
-            used = used | set(keyword.kwlist)
-        while attempt in used:
+        def _is_name_allowed(name: str) -> bool:
+            # We need to also protect against using keywords ('class', 'def' etc.)
+            # i.e. count all keywords as 'used'.
+            # However, some builtins are also keywords (e.g. 'None'), and so
+            # if a builtin is being reserved, don't check against the keyword list
+            if (not is_builtin) and keyword.iskeyword(name):
+                return False
+
+            return not self.is_name_reserved(name)
+
+        while not _is_name_allowed(attempt):
             attempt = cleaned + str(count)
             count += 1
+
         return _add(attempt)
 
     def reserve_function_arg_name(self, name):
@@ -180,7 +190,7 @@ class Scope:
         # To keep things simple, and the generated code predictable, we reserve
         # names for all function arguments in a separate scope, and insist on
         # the exact names
-        if name in self.all_reserved_names():
+        if self.is_name_reserved(name):
             raise AssertionError(f"Can't reserve '{name}' as function arg name as it is already reserved")
         self._function_arg_reserved_names.add(name)
 
@@ -307,7 +317,7 @@ class Block(PythonAstList):
 
            x = value
         """
-        if name not in self.scope.names_in_use():
+        if not self.scope.is_name_in_use(name):
             raise AssertionError(f"Cannot assign to unreserved name '{name}'")
 
         if self.scope.has_assignment(name):
@@ -366,7 +376,7 @@ class Function(Scope, Statement, PythonAst):
         if args is None:
             args = ()
         for arg in args:
-            if arg in self.names_in_use():
+            if self.is_name_in_use(arg):
                 raise AssertionError(f"Can't use '{arg}' as function argument name because it shadows other names")
             self.reserve_name(arg, function_arg=True)
         self.args = args
@@ -663,7 +673,7 @@ class VariableReference(Expression):
     child_elements = []
 
     def __init__(self, name, scope):
-        if name not in scope.names_in_use():
+        if not scope.is_name_in_use(name):
             raise AssertionError(f"Cannot refer to undefined variable '{name}'")
         self.name = name
         self.type = scope.get_name_properties(name).get(PROPERTY_TYPE, UNKNOWN_TYPE)
@@ -684,7 +694,7 @@ class FunctionCall(Expression):
     child_elements = ["args", "kwargs"]
 
     def __init__(self, function_name, args, kwargs, scope, expr_type=UNKNOWN_TYPE):
-        if function_name not in scope.names_in_use():
+        if not scope.is_name_in_use(function_name):
             raise AssertionError(f"Cannot call unknown function '{function_name}'")
         self.function_name = function_name
         self.args = list(args)
