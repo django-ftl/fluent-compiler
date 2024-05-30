@@ -392,6 +392,7 @@ class Function(Scope, Statement, PythonAst):
             ),
             body=self.body.as_ast_list(allow_empty=False),
             decorator_list=[],
+            type_params=[],  # ast_decompiler compat
             returns=None,  # ast_decompiler compat
             **DEFAULT_AST_ARGS,
         )
