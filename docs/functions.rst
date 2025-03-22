@@ -25,7 +25,7 @@ You can add functions to the ones available to FTL authors by passing a
     ...   }
     ... """,
     ... functions={'OS': os_name})
-    >>> print(bundle.format('welcome')[0]
+    >>> print(bundle.format('welcome')[0])
     Welcome to Linux
 
 These functions can accept positional and keyword arguments, like the ``NUMBER``
