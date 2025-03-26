@@ -1,3 +1,75 @@
+[project]
+name = "fluent-compiler"
+description = "Blazing fast implementation of Fluent localization language."
+license = {text = "APL 2"}
+authors = [
+    { name = "Luke Plant", email = "luke@lukeplant.me.uk" }
+]
+requires-python = ">=3.8"
+keywords = [
+  "fluent",
+  "localization",
+  "l10n",
+  "compiler",
+  "projectfluent",
+  "ftl",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Localization",
+]
+dynamic = ["version"]
+
+dependencies = [
+    "attrs>=19.3.0",
+    "babel>=2.12.0",
+    "fluent-syntax>=0.14",
+    "pytz>=2025.2",
+    "tox-uv>=1.13.1",
+    "tox>=4.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/django-ftl/fluent-compiler"
+Documentation = "https://fluent-compiler.readthedocs.io/en/latest/"
+Repository = "https://github.com/django-ftl/fluent-compiler"
+Changelog = "https://fluent-compiler.readthedocs.io/en/latest/history.html"
+Tracker = "https://github.com/django-ftl/fluent-compiler/issues"
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.dynamic]
+version = {attr = "fluent_compiler.__version__"}
+
+
 [tool.black]
 line-length = 120
 # required-version = '22.3.0' # see https://github.com/psf/black/issues/2493
@@ -17,3 +89,14 @@ extend-select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["fluent_compiler"]
+
+[dependency-groups]
+dev = [
+    "ast-decompiler>=0.4",
+    "beautifulsoup4>=4.7.1",
+    "hypothesis>=4.9.0",
+    "markdown>=3.0.1",
+    "markupsafe>=1.1.1",
+    "pre-commit>=3.5.0",
+    "pytest>=7.4.4",
+]
