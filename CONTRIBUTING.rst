@@ -18,17 +18,19 @@ development:
 
 1. Fork ``fluent_compiler`` on GitHub.
 2. Clone and go to the forked repository.
-3. Create and activate a virtual environment for development (or your
-   preferred mechanism for isolated Python environments).
-4. Install the package in development mode::
+3. Set up a venv for development. We use `uv <https://docs.astral.sh/uv/>`_ and
+   recommend you do the same. With uv, the setup instructions are::
 
-     pip install -e .
+     uv sync
 
-5. Install test requirements::
+  This will use your default Python version. If you want to use a different
+  Python version, instead of the above do this e.g.::
 
-     pip install -r requirements-test.txt
+     uv python install 3.10
+     uv venv --python 3.10
+     uv sync
 
-6. Run the tests::
+4. Run the tests::
 
      pytest
 
@@ -39,15 +41,11 @@ including `ruff <https://github.com/astral-sh/ruff>`_ and `black
 <https://github.com/psf/black>`_. These are most easily added by using
 `pre-commit <https://pre-commit.com/>`_:
 
-* Install pre-commit globally e.g. ``pipx install pre-commit`` if you
-  already have `pipx <https://github.com/pypa/pipx>`_.
-
 * Do ``pre-commit install`` in the repo.
 
 Now all the linters will run when you commit changes.
 
-To run tests on multiple Python versions locally you can also install
-and use ``tox``.
+To run tests on multiple Python versions locally you can also use ``tox``.
 
 
 Fixes and features

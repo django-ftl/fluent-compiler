@@ -1,6 +1,12 @@
 Changelog
 =========
 
+fluent_compiler 1.2 (unreleased)
+--------------------------------
+
+* Dropped Python 3.7 support
+* Compiler performance improvements - thanks `@leamingrad <https://github.com/leamingrad>`_.
+
 fluent_compiler 1.1 (2024-04-02)
 --------------------------------
 
