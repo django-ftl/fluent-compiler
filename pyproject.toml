@@ -92,7 +92,7 @@ known-first-party = ["fluent_compiler"]
 
 [dependency-groups]
 dev = [
-    "ast-decompiler>=0.4",
+    "ast-decompiler>=0.8",
     "beautifulsoup4>=4.7.1",
     "hypothesis>=4.9.0",
     "markdown>=3.0.1",
