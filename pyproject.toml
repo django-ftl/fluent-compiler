@@ -39,8 +39,6 @@ dependencies = [
     "babel>=2.12.0",
     "fluent-syntax>=0.14",
     "pytz>=2025.2",
-    "tox-uv>=1.13.1",
-    "tox>=4.8.0",
 ]
 
 [project.urls]
@@ -99,4 +97,6 @@ dev = [
     "markupsafe>=1.1.1",
     "pre-commit>=3.5.0",
     "pytest>=7.4.4",
+    "tox-uv>=1.13.1",
+    "tox>=4.25.0",
 ]
