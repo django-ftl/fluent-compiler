@@ -106,6 +106,10 @@ class PythonAstList:
 # `compile` builtin needs these attributes on AST nodes.
 # It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
 DEFAULT_AST_ARGS = dict(lineno=1, col_offset=1)
+# Some AST types have different requirements:
+DEFAULT_AST_ARGS_MODULE = dict()
+DEFAULT_AST_ARGS_ADD = dict()
+DEFAULT_AST_ARGS_ARGUMENTS = dict()
 
 
 class Scope:
@@ -353,12 +357,12 @@ class Module(Block, PythonAst):
         Block.__init__(self, scope)
 
     def as_ast(self):
-        return ast.Module(body=self.as_ast_list(), type_ignores=[], **DEFAULT_AST_ARGS)
+        return ast.Module(body=self.as_ast_list(), type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
 
     def as_multiple_module_ast(self):
         retval = []
         for item in self.as_ast_list():
-            mod = ast.Module(body=[item], type_ignores=[], **DEFAULT_AST_ARGS)
+            mod = ast.Module(body=[item], type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
             if hasattr(item, "filename"):
                 # For use by compile_messages
                 mod.filename = item.filename
@@ -388,6 +392,7 @@ class Function(Scope, Statement, PythonAst):
         for arg in self.args:
             if not allowable_name(arg):
                 raise AssertionError(f"Expected '{arg}' to be a valid Python identifier")
+
         func_def = ast.FunctionDef(
             name=self.func_name,
             args=ast.arguments(
@@ -398,7 +403,7 @@ class Function(Scope, Statement, PythonAst):
                 kw_defaults=[],
                 kwarg=None,
                 defaults=[],
-                **DEFAULT_AST_ARGS,
+                **DEFAULT_AST_ARGS_ARGUMENTS,
             ),
             body=self.body.as_ast_list(allow_empty=False),
             decorator_list=[],
@@ -466,7 +471,7 @@ class If(Statement, PythonAst):
     def as_ast(self):
         if len(self.if_blocks) == 0:
             raise AssertionError("Should have called `finalize` on If")
-        if_ast = ast.If(orelse=[], **DEFAULT_AST_ARGS)
+        if_ast = ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)
         current_if = if_ast
         previous_if = None
         for condition, if_block in zip(self.conditions, self.if_blocks):
@@ -476,7 +481,7 @@ class If(Statement, PythonAst):
                 previous_if.orelse.append(current_if)
 
             previous_if = current_if
-            current_if = ast.If(orelse=[], **DEFAULT_AST_ARGS)
+            current_if = ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)
 
         if self.else_block.statements:
             previous_if.orelse = self.else_block.as_ast_list()
@@ -651,7 +656,7 @@ class ConcatJoin(StringJoinBase):
             right = part.as_ast()
             left = ast.BinOp(
                 left=left,
-                op=ast.Add(**DEFAULT_AST_ARGS),
+                op=ast.Add(**DEFAULT_AST_ARGS_ADD),
                 right=right,
                 **DEFAULT_AST_ARGS,
             )

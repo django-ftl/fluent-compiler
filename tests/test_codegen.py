@@ -27,7 +27,7 @@ def decompile(ast, indentation=4, line_length=100, starting_indentation=0):
 
 
 def decompile_ast_list(ast_list):
-    return decompile(ast.Module(body=ast_list, **codegen.DEFAULT_AST_ARGS))
+    return decompile(ast.Module(body=ast_list, **codegen.DEFAULT_AST_ARGS_MODULE))
 
 
 def as_source_code(codegen_ast):
