@@ -1,9 +1,0 @@
-# This file is used in test runs, to pin versions of runtime dependencies
-# (those in setup.cfg), to help test stability, because some tests
-# depend on exact behaviour (e.g. of Babel which bundles specific versions
-# of i18n data) and are hard to write concisely otherwise.
-
-fluent.syntax>=0.14
-attrs==19.3.0
-babel==2.9.1
-pytz==2018.9
