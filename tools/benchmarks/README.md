@@ -1,22 +1,19 @@
-To run the benchmarks, do the following from this directory:
-
-    $ pip install -r requirements.txt
-
-Then, run any of the benchmarks you want as scripts:
+To run the benchmarks, after installing the project in the normal way
+for development, run any of the benchmarks you want as scripts:
 
     $ ./runtime.py
     $ ./compiler.py
 
 You can also run them using py.test with extra args:
 
-    $ py.test --benchmark-warmup=on runtime.py -k interpolation
+    $ pytest --benchmark-warmup=on runtime.py -k interpolation
 
 The “plural form” tests are the cases where GNU gettext performs most
 favourably, partly because it uses a much simpler (and incorrect) function for
 deciding plural forms, while we use the more complex ones from CLDR. You can
 exclude those by doing:
 
-    $ py.test --benchmark-warmup=on runtime.py -k 'not plural'
+    $ pytest --benchmark-warmup=on runtime.py -k 'not plural'
 
 To profile the benchmark suite, we recommend py-spy as a good tool. Install
 py-spy: https://github.com/benfred/py-spy

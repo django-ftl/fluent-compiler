@@ -35,7 +35,6 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "attrs>=19.3.0",
     "babel>=2.12.0",
     "fluent-syntax>=0.14",
     "pytz>=2025.2",
@@ -92,11 +91,13 @@ known-first-party = ["fluent_compiler"]
 dev = [
     "ast-decompiler>=0.8",
     "beautifulsoup4>=4.7.1",
+    "fluent-runtime>=0.4.0",
     "hypothesis>=4.9.0",
     "markdown>=3.0.1",
     "markupsafe>=1.1.1",
     "pre-commit>=3.5.0",
     "pytest>=7.4.4",
-    "tox-uv>=1.13.1",
+    "pytest-benchmark>=4.0.0",
     "tox>=4.25.0",
+    "tox-uv>=1.13.1",
 ]
