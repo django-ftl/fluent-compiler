@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, tzinfo
 from decimal import Decimal
 from typing import Literal, get_args
 
-import attr
 import pytz
 from babel.dates import format_date, format_time, get_datetime_format, get_timezone
 from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pattern, parse_pattern
@@ -306,31 +305,37 @@ def clone_pattern(pattern):
     )
 
 
-@attr.s
+@dataclass
 class DateFormatOptions:
     # Parameters.
     # See https://projectfluent.org/fluent/guide/functions.html#datetime
 
     # Developer only
-    timeZone = attr.ib(default=None)
+    timeZone: tzinfo | None = None
 
     # Other
     # Keyword args available to FTL authors must be synced to fluent_date.ftl_arg_spec below
 
-    hour12 = attr.ib(default=None)
-    weekday = attr.ib(default=None)
-    era = attr.ib(default=None)
-    year = attr.ib(default=None)
-    month = attr.ib(default=None)
-    day = attr.ib(default=None)
-    hour = attr.ib(default=None)
-    minute = attr.ib(default=None)
-    second = attr.ib(default=None)
-    timeZoneName = attr.ib(default=None)
+    hour12: bool | None = None
+    weekday: str | None = None
+    era: str | None = None
+    year: str | None = None
+    month: str | None = None
+    day: str | None = None
+    hour: str | None = None
+    minute: str | None = None
+    second: str | None = None
+    timeZoneName: str | None = None
 
     # See https://github.com/tc39/proposal-ecma402-datetime-style
-    dateStyle = attr.ib(default=None, validator=attr.validators.in_(DATE_STYLE_OPTIONS))
-    timeStyle = attr.ib(default=None, validator=attr.validators.in_(TIME_STYLE_OPTIONS))
+    dateStyle: DateStyle | None = None
+    timeStyle: TimeStyle | None = None
+
+    def __post_init__(self):
+        if self.dateStyle not in DATE_STYLE_OPTIONS:
+            raise ValueError(f"{self.dateStyle} is not a valid option for dateStyle, choose from: {DATE_STYLE_OPTIONS}")
+        if self.timeStyle not in TIME_STYLE_OPTIONS:
+            raise ValueError(f"{self.timeStyle} is not a valid option for dateStyle, choose from: {TIME_STYLE_OPTIONS}")
 
 
 _SUPPORTED_DATETIME_OPTIONS = ["dateStyle", "timeStyle", "timeZone"]
@@ -352,7 +357,7 @@ class FluentDateType(FluentType):
 
     def format(self, locale):
         if isinstance(self, datetime):
-            selftz = _ensure_datetime_tzinfo(self, tzinfo=self.options.timeZone)
+            selftz = _ensure_datetime_tzinfo(self, tzinfo_obj=self.options.timeZone)
         else:
             selftz = self
 
@@ -378,17 +383,17 @@ class FluentDateType(FluentType):
             )
 
 
-def _ensure_datetime_tzinfo(dt, tzinfo=None):
+def _ensure_datetime_tzinfo(dt, tzinfo_obj: tzinfo | None = None):
     """
     Ensure the datetime passed has an attached tzinfo.
     """
     # Adapted from babel's function.
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.UTC)
-    if tzinfo is not None:
-        dt = dt.astimezone(get_timezone(tzinfo))
-        if hasattr(tzinfo, "normalize"):  # pytz
-            dt = tzinfo.normalize(datetime)
+    if tzinfo_obj is not None:
+        dt = dt.astimezone(get_timezone(tzinfo_obj))
+        if hasattr(tzinfo_obj, "normalize"):  # pytz
+            dt = tzinfo_obj.normalize(datetime)
     return dt
 
 
