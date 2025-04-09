@@ -36,6 +36,7 @@ dynamic = ["version"]
 
 dependencies = [
     "babel>=2.12.0",
+    "backports-strenum>=1.2.4 ; python_full_version < '3.11'",
     "fluent-syntax>=0.14",
     "pytz>=2025.2",
 ]

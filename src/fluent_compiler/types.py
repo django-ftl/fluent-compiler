@@ -7,23 +7,31 @@ import pytz
 from babel.dates import format_date, format_time, get_datetime_format, get_timezone
 from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pattern, parse_pattern
 
-FORMAT_STYLE_DECIMAL = "decimal"
-FORMAT_STYLE_CURRENCY = "currency"
-FORMAT_STYLE_PERCENT = "percent"
-FORMAT_STYLE_OPTIONS = {
-    FORMAT_STYLE_DECIMAL,
-    FORMAT_STYLE_CURRENCY,
-    FORMAT_STYLE_PERCENT,
-}
+from .compat import StrEnum
 
-CURRENCY_DISPLAY_SYMBOL = "symbol"
-CURRENCY_DISPLAY_CODE = "code"
-CURRENCY_DISPLAY_NAME = "name"
-CURRENCY_DISPLAY_OPTIONS = {
-    CURRENCY_DISPLAY_SYMBOL,
-    CURRENCY_DISPLAY_CODE,
-    CURRENCY_DISPLAY_NAME,
-}
+
+class FormatStyle(StrEnum):
+    DECIMAL = "decimal"
+    CURRENCY = "currency"
+    PERCENT = "percent"
+
+
+class CurrencyDisplay(StrEnum):
+    SYMBOL = "symbol"
+    CODE = "code"
+    NAME = "name"
+
+
+# Backwards compat constants in case anyone is importing these
+FORMAT_STYLE_DECIMAL = FormatStyle.DECIMAL
+FORMAT_STYLE_CURRENCY = FormatStyle.CURRENCY
+FORMAT_STYLE_PERCENT = FormatStyle.PERCENT
+FORMAT_STYLE_OPTIONS = set(FormatStyle)
+
+CURRENCY_DISPLAY_SYMBOL = CurrencyDisplay.SYMBOL
+CURRENCY_DISPLAY_CODE = CurrencyDisplay.CODE
+CURRENCY_DISPLAY_NAME = CurrencyDisplay.NAME
+CURRENCY_DISPLAY_OPTIONS = set(CurrencyDisplay)
 
 DATE_STYLE_OPTIONS = {
     "full",
