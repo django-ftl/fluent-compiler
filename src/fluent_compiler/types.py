@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import warnings
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal, get_args
@@ -74,7 +77,7 @@ class FluentNone(FluentType):
         return f"<FluentNone({self.name!r})>"
 
 
-@attr.s
+@dataclass
 class NumberFormatOptions:
     # We follow the Intl.NumberFormat parameter names here,
     # rather than using underscores as per PEP8, so that
@@ -83,21 +86,19 @@ class NumberFormatOptions:
     # Keyword args available to FTL authors must be synced to fluent_number.ftl_arg_spec below
 
     # See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NumberFormat
-    style = attr.ib(
-        default=FORMAT_STYLE_DECIMAL,
-        validator=attr.validators.in_(FORMAT_STYLE_OPTIONS),
-    )
-    currency = attr.ib(default=None)
-    currencyDisplay = attr.ib(
-        default=CURRENCY_DISPLAY_SYMBOL,
-        validator=attr.validators.in_(CURRENCY_DISPLAY_OPTIONS),
-    )
-    useGrouping = attr.ib(default=True)
-    minimumIntegerDigits = attr.ib(default=None)
-    minimumFractionDigits = attr.ib(default=None)
-    maximumFractionDigits = attr.ib(default=None)
-    minimumSignificantDigits = attr.ib(default=None)
-    maximumSignificantDigits = attr.ib(default=None)
+    style: FormatStyle = FormatStyle.DECIMAL
+    currency: str | None = None
+    currencyDisplay: CurrencyDisplay = CurrencyDisplay.SYMBOL
+    useGrouping: bool = True
+    minimumIntegerDigits: int | None = None
+    minimumFractionDigits: int | None = None
+    maximumFractionDigits: int | None = None
+    minimumSignificantDigits: int | None = None
+    maximumSignificantDigits: int | None = None
+
+    def __post_init__(self):
+        self.currencyDisplay = CurrencyDisplay(self.currencyDisplay)
+        self.style = FormatStyle(self.style)
 
 
 class FluentNumber(FluentType):
