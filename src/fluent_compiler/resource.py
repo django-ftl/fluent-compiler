@@ -1,14 +1,16 @@
-import attr
+from __future__ import annotations
+
+from dataclasses import dataclass
 
 
-@attr.s
+@dataclass
 class FtlResource:
     """
     Represents an (unparsed) FTL file (contents and optional filename)
     """
 
-    text = attr.ib()
-    filename = attr.ib(default=None)
+    text: str
+    filename: str | None = None
 
     @classmethod
     def from_string(cls, text):
