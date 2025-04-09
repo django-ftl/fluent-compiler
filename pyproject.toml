@@ -39,6 +39,7 @@ dependencies = [
     "backports-strenum>=1.2.4 ; python_full_version < '3.11'",
     "fluent-syntax>=0.14",
     "pytz>=2025.2",
+    "typing-extensions>=4.13.0 ; python_full_version < '3.10'",
 ]
 
 [project.urls]
@@ -94,6 +95,7 @@ dev = [
     "beautifulsoup4>=4.7.1",
     "fluent-runtime>=0.4.0",
     "hypothesis>=4.9.0",
+    "ipython>=8.12.3",
     "markdown>=3.0.1",
     "markupsafe>=1.1.1",
     "pre-commit>=3.5.0",

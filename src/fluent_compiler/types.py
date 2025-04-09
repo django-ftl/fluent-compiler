@@ -1,13 +1,14 @@
 import warnings
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal, get_args
 
 import attr
 import pytz
 from babel.dates import format_date, format_time, get_datetime_format, get_timezone
 from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pattern, parse_pattern
 
-from .compat import StrEnum
+from .compat import StrEnum, TypeAlias
 
 
 class FormatStyle(StrEnum):
@@ -22,32 +23,36 @@ class CurrencyDisplay(StrEnum):
     NAME = "name"
 
 
+DateStyle: TypeAlias = Literal[
+    "full",
+    "long",
+    "medium",
+    "short",
+    None,
+]
+
+TimeStyle: TypeAlias = Literal[
+    "full",
+    "long",
+    "medium",
+    "short",
+    None,
+]
+
+
 # Backwards compat constants in case anyone is importing these
 FORMAT_STYLE_DECIMAL = FormatStyle.DECIMAL
 FORMAT_STYLE_CURRENCY = FormatStyle.CURRENCY
 FORMAT_STYLE_PERCENT = FormatStyle.PERCENT
-FORMAT_STYLE_OPTIONS = set(FormatStyle)
+FORMAT_STYLE_OPTIONS: set[FormatStyle] = set(FormatStyle)
 
 CURRENCY_DISPLAY_SYMBOL = CurrencyDisplay.SYMBOL
 CURRENCY_DISPLAY_CODE = CurrencyDisplay.CODE
 CURRENCY_DISPLAY_NAME = CurrencyDisplay.NAME
-CURRENCY_DISPLAY_OPTIONS = set(CurrencyDisplay)
+CURRENCY_DISPLAY_OPTIONS: set[CurrencyDisplay] = set(CurrencyDisplay)
 
-DATE_STYLE_OPTIONS = {
-    "full",
-    "long",
-    "medium",
-    "short",
-    None,
-}
-
-TIME_STYLE_OPTIONS = {
-    "full",
-    "long",
-    "medium",
-    "short",
-    None,
-}
+DATE_STYLE_OPTIONS: set[str | None] = set(get_args(DateStyle))
+TIME_STYLE_OPTIONS: set[str | None] = set(get_args(TimeStyle))
 
 
 class FluentType:
