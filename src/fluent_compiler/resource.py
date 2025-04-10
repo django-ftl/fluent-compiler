@@ -13,10 +13,10 @@ class FtlResource:
     filename: str | None = None
 
     @classmethod
-    def from_string(cls, text):
+    def from_string(cls, text: str) -> FtlResource:
         return cls(text)
 
     @classmethod
-    def from_file(cls, filename, encoding="utf-8"):
+    def from_file(cls, filename: str, encoding="utf-8"):
         with open(filename, "rb") as f:
             return cls(text=f.read().decode(encoding), filename=filename)
