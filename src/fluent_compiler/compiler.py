@@ -134,7 +134,7 @@ class CompilerEnvironment:
     def add_current_message_error(self, error):
         self.errors.append((self.current.message_id, error))
 
-    def escaper_for_message(self, message_id=None):
+    def escaper_for_message(self, message_id: str | None = None):
         return escaper_for_message(self.escapers, message_id=message_id)
 
     @contextlib.contextmanager
@@ -680,7 +680,7 @@ def contains_reference_cycle(msg, compiler_env):
 
 
 @singledispatch
-def compile_expr(element, block, compiler_env):
+def compile_expr(element: BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment):
     """
     Compiles a Fluent expression into a Python one, return
     an object of type codegen.Expression.

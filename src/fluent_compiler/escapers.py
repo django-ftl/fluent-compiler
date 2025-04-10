@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ast import Call
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Sequence
 
 from attr import dataclass
 
@@ -25,7 +25,7 @@ def identity(value):
 default_join = "".join
 
 
-def select_always(message_id=None, **kwargs):
+def select_always(message_id: str | None = None, **kwargs: object):
     return True
 
 
@@ -65,7 +65,9 @@ def escapers_compatible(outer_escaper: Escaper | RegisteredEscaper, inner_escape
     return outer_escaper.name == inner_escaper.name
 
 
-def escaper_for_message(escapers: list[RegisteredEscaper] | None, message_id: str) -> Escaper | RegisteredEscaper:
+def escaper_for_message(
+    escapers: Sequence[RegisteredEscaper] | None, message_id: str | None
+) -> Escaper | RegisteredEscaper:
     if escapers is not None:
         for escaper in escapers:
             if escaper.select(message_id=message_id):
