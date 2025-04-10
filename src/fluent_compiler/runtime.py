@@ -2,6 +2,9 @@
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Callable, List
+
+from babel.core import Locale
 
 from .errors import FluentCyclicReferenceError, FluentFormatError, FluentReferenceError
 from .types import FluentNone, FluentType, fluent_date, fluent_number
@@ -27,7 +30,13 @@ RETURN_TYPES = {
 }
 
 
-def handle_argument_with_escaper(arg, name, output_type, locale, errors):
+def handle_argument_with_escaper(
+    arg: object,
+    name: str,
+    output_type: type,
+    locale: Locale,
+    errors: List[Exception],
+) -> object:
     # This needs to be synced with resolver.handle_variable_reference
     if isinstance(arg, output_type):
         return arg
@@ -41,7 +50,7 @@ def handle_argument_with_escaper(arg, name, output_type, locale, errors):
     return name
 
 
-def handle_argument(arg, name, locale, errors):
+def handle_argument(arg: object, name: str, locale: Locale, errors: List[Exception]) -> object:
     # handle_argument_with_escaper specialized to null escaper
     # This needs to be synced with resolver.handle_variable_reference
     if isinstance(arg, str):
@@ -54,7 +63,13 @@ def handle_argument(arg, name, locale, errors):
     return name
 
 
-def handle_output_with_escaper(val, output_type, escaper_escape, locale, errors):
+def handle_output_with_escaper(
+    val: object,
+    output_type: type,
+    escaper_escape: Callable,
+    locale: Locale,
+    errors: List[Exception],
+) -> object:
     if isinstance(val, output_type):
         return val
     elif isinstance(val, str):
@@ -67,7 +82,7 @@ def handle_output_with_escaper(val, output_type, escaper_escape, locale, errors)
         raise TypeError(f"Cannot handle object {val} of type {type(val).__name__}")
 
 
-def handle_output(val, locale, errors):
+def handle_output(val: object, locale: Locale, errors: List[Exception]) -> str:
     # handle_output_with_escaper specialized to null_escaper
     if isinstance(val, str):
         return val
