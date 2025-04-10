@@ -130,7 +130,7 @@ class FluentNumber(FluentType):
             pattern = self._apply_options(base_pattern)
             return pattern.apply(self, locale)
         elif self.options.style == FORMAT_STYLE_CURRENCY:
-            if self.options.currencyDisplay == "name":
+            if self.options.currencyDisplay == CurrencyDisplay.NAME:
                 return self._format_currency_long_name(locale)
             else:
                 base_pattern = locale.currency_formats["standard"]
