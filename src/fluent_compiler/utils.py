@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import builtins
 import inspect
 import keyword
 import re
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Tuple, Union
 
-from fluent.syntax.ast import Term, TermReference
+from fluent.syntax.ast import Attribute, Message, MessageReference, Span, Term, TermReference
 
 from .compat import TypeAlias
 from .errors import FluentFormatError
 
 TERM_SIGIL = "-"
 ATTRIBUTE_SEPARATOR = "."
+
+if TYPE_CHECKING:
+    from .codegen import FunctionCall, String, VariableReference
 
 
 class AnyArgType:
@@ -27,13 +32,13 @@ AnyArg = AnyArgType()
 NAMED_ARG_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
 
-def allowable_keyword_arg_name(name):
+def allowable_keyword_arg_name(name: str) -> re.Match | None:
     # We limit to what Fluent allows for NamedArgument - Python allows anything
     # if you use **kwarg call and receiving syntax.
     return NAMED_ARG_RE.match(name)
 
 
-def ast_to_id(ast):
+def ast_to_id(ast: Message | Term) -> str:
     """
     Returns a string reference for a Term or Message
     """
@@ -42,14 +47,14 @@ def ast_to_id(ast):
     return ast.id.name
 
 
-def attribute_ast_to_id(attribute, parent_ast) -> str:
+def attribute_ast_to_id(attribute: Attribute, parent_ast: Message | Term) -> str:
     """
     Returns a string reference for an Attribute, given Attribute and parent Term or Message
     """
     return "".join([ast_to_id(parent_ast), ATTRIBUTE_SEPARATOR, attribute.id.name])
 
 
-def allowable_name(ident, for_method=False, allow_builtin=False):
+def allowable_name(ident: str, for_method: bool = False, allow_builtin: bool = False):
     if keyword.iskeyword(ident):
         return False
 
@@ -66,7 +71,7 @@ def allowable_name(ident, for_method=False, allow_builtin=False):
 FunctionArgSpec: TypeAlias = Tuple[Union[int, AnyArgType], Union[List[str], AnyArgType]]
 
 
-def inspect_function_args(function, name, errors) -> FunctionArgSpec:
+def inspect_function_args(function: Callable, name: str, errors: list[Any]) -> FunctionArgSpec:
     """
     For a Python function, returns a 2 tuple containing:
     (number of positional args or Any,
@@ -100,7 +105,12 @@ def inspect_function_args(function, name, errors) -> FunctionArgSpec:
     return sanitize_function_args((positional, keywords), name, errors)
 
 
-def args_match(function_name, args, kwargs, arg_spec):
+def args_match(
+    function_name: str,
+    args: list[VariableReference | Any | FunctionCall | String],
+    kwargs: dict[str, FunctionCall | String],
+    arg_spec: FunctionArgSpec,
+) -> Any:
     """
     Checks the passed in args/kwargs against the function arg_spec
     and returns data for calling the function correctly.
@@ -148,7 +158,7 @@ def args_match(function_name, args, kwargs, arg_spec):
     return (match, sanitized_args, sanitized_kwargs, errors)
 
 
-def reference_to_id(ref, ignore_attributes=False):
+def reference_to_id(ref: TermReference | MessageReference, ignore_attributes: bool = False) -> str:
     """
     Returns a string reference for a MessageReference or TermReference
     AST node.
@@ -169,7 +179,7 @@ def reference_to_id(ref, ignore_attributes=False):
     return start
 
 
-def sanitize_function_args(arg_spec, name, errors) -> FunctionArgSpec:
+def sanitize_function_args(arg_spec: Any, name: str, errors: list[Any]) -> FunctionArgSpec:
     """
     Check function arg spec is legitimate, returning a cleaned
     up version, and adding any errors to errors list.
@@ -187,7 +197,7 @@ def sanitize_function_args(arg_spec, name, errors) -> FunctionArgSpec:
     return (positional_args, cleaned_kwargs)
 
 
-def span_to_position(span, source_text):
+def span_to_position(span: Span, source_text: str) -> tuple[int, int]:
     start = span.start
     relevant = source_text[0:start]
     row = relevant.count("\n") + 1
@@ -195,6 +205,6 @@ def span_to_position(span, source_text):
     return row, col
 
 
-def display_location(filename, position):
+def display_location(filename: str | None, position: tuple[int, int]) -> str:
     row, col = position
     return f"{filename if filename else '<string>'}:{row}:{col}"

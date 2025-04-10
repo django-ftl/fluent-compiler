@@ -689,7 +689,7 @@ class VariableReference(Expression):
         return ast.Name(id=self.name, ctx=ast.Load(), **DEFAULT_AST_ARGS)
 
     def __eq__(self, other):
-        return type(other) == type(self) and other.name == self.name
+        return type(other) is type(self) and other.name == self.name
 
     def __repr__(self):
         return f"VariableReference({repr(self.name)})"
