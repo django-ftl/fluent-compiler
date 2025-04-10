@@ -1,8 +1,9 @@
 # Runtime functions for compiled messages
+from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Callable, List
+from typing import Callable
 
 from babel.core import Locale
 
@@ -35,7 +36,7 @@ def handle_argument_with_escaper(
     name: str,
     output_type: type,
     locale: Locale,
-    errors: List[Exception],
+    errors: list[Exception],
 ) -> object:
     # This needs to be synced with resolver.handle_variable_reference
     if isinstance(arg, output_type):
@@ -50,7 +51,7 @@ def handle_argument_with_escaper(
     return name
 
 
-def handle_argument(arg: object, name: str, locale: Locale, errors: List[Exception]) -> object:
+def handle_argument(arg: object, name: str, locale: Locale, errors: list[Exception]) -> object:
     # handle_argument_with_escaper specialized to null escaper
     # This needs to be synced with resolver.handle_variable_reference
     if isinstance(arg, str):
@@ -68,7 +69,7 @@ def handle_output_with_escaper(
     output_type: type,
     escaper_escape: Callable,
     locale: Locale,
-    errors: List[Exception],
+    errors: list[Exception],
 ) -> object:
     if isinstance(val, output_type):
         return val
@@ -82,7 +83,7 @@ def handle_output_with_escaper(
         raise TypeError(f"Cannot handle object {val} of type {type(val).__name__}")
 
 
-def handle_output(val: object, locale: Locale, errors: List[Exception]) -> str:
+def handle_output(val: object, locale: Locale, errors: list[Exception]) -> str:
     # handle_output_with_escaper specialized to null_escaper
     if isinstance(val, str):
         return val

@@ -1,4 +1,6 @@
-from typing import Any, Callable, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any, Callable
 
 from fluent_compiler.escapers import Escaper
 
@@ -23,10 +25,10 @@ class FluentBundle:
     def __init__(
         self,
         locale: str,
-        resources: List[FtlResource],
-        functions: Optional[Dict[str, Callable]] = None,
+        resources: list[FtlResource],
+        functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: Optional[List[Escaper]] = None,
+        escapers: list[Escaper] | None = None,
     ):
         self.locale = locale
         compiled_ftl = compile_messages(
@@ -44,10 +46,10 @@ class FluentBundle:
         cls,
         locale: str,
         text: str,
-        functions: Optional[Dict[str, Callable]] = None,
+        functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: Optional[List[Escaper]] = None,
-    ) -> "FluentBundle":
+        escapers: list[Escaper] | None = None,
+    ) -> FluentBundle:
         return cls(
             locale,
             [FtlResource.from_string(text)],
@@ -71,9 +73,9 @@ class FluentBundle:
             return False
         return message_id in self._compiled_messages
 
-    def format(self, message_id: str, args: Optional[Any] = None) -> Any:
+    def format(self, message_id: str, args: Any | None = None) -> Any:
         errors = []
         return self._compiled_messages[message_id](args, errors), errors
 
-    def check_messages(self) -> List[CompilationErrorItem]:
+    def check_messages(self) -> list[CompilationErrorItem]:
         return self._compilation_errors
