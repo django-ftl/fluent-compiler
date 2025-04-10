@@ -14,24 +14,7 @@ from typing import Callable, Sequence, Tuple, Union
 import babel
 import babel.plural
 from fluent.syntax import FluentParser
-from fluent.syntax.ast import (
-    Attribute,
-    BaseNode,
-    FunctionReference,
-    Identifier,
-    Junk,
-    Message,
-    MessageReference,
-    NumberLiteral,
-    Pattern,
-    Placeable,
-    SelectExpression,
-    StringLiteral,
-    Term,
-    TermReference,
-    TextElement,
-    VariableReference,
-)
+from fluent.syntax import ast as fltast
 
 from fluent_compiler.resource import FtlResource
 
@@ -127,8 +110,8 @@ class CompilerEnvironment:
     functions: dict[str, Callable] = field(default_factory=dict)
     function_renames: dict[str, str] = field(default_factory=dict)
     functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
-    message_ids_to_ast: dict[str, Message] = field(default_factory=dict)
-    term_ids_to_ast: dict[str, Term] = field(default_factory=dict)
+    message_ids_to_ast: dict[str, fltast.Message] = field(default_factory=dict)
+    term_ids_to_ast: dict[str, fltast.Term] = field(default_factory=dict)
     current: CurrentEnvironment = field(default_factory=CurrentEnvironment)
 
     def add_current_message_error(self, error):
@@ -243,7 +226,7 @@ def _parse_resources(ftl_resources):
         parser = FluentParser()
         resource = parser.parse(ftl_resource.text)
         for item in resource.body:
-            if isinstance(item, (Message, Term)):
+            if isinstance(item, (fltast.Message, fltast.Term)):
                 full_id = ast_to_id(item)
                 if full_id in output_dict:
                     parsing_issues.append(
@@ -258,7 +241,7 @@ def _parse_resources(ftl_resources):
                     for attribute in item.attributes:
                         attribute.ftl_resource = ftl_resource
                     output_dict[full_id] = item
-            elif isinstance(item, Junk):
+            elif isinstance(item, fltast.Junk):
                 parsing_issues.append(
                     (
                         None,
@@ -282,7 +265,7 @@ def _parse_resources(ftl_resources):
 
 
 def messages_to_module(
-    messages: dict[str, Message | Term],
+    messages: dict[str, fltast.Message | fltast.Term],
     locale: babel.Locale,
     use_isolating: bool = True,
     functions: dict[str, Callable] | None = None,
@@ -408,7 +391,7 @@ def messages_to_module(
 
 def get_message_function_ast(message_dict):
     for msg_id, msg in message_dict.items():
-        if isinstance(msg, Term):
+        if isinstance(msg, fltast.Term):
             continue
         if msg.value is not None:  # has a body
             yield (msg_id, msg)
@@ -418,7 +401,7 @@ def get_message_function_ast(message_dict):
 
 def get_term_ast(message_dict):
     for term_id, term in message_dict.items():
-        if isinstance(term, Message):
+        if isinstance(term, fltast.Message):
             pass
         if term.value is not None:  # has a body
             yield (term_id, term)
@@ -469,7 +452,7 @@ def traverse_ast(node, func, exclude_attributes=None):
 
     def visit(value):
         """Call `func` on `value` and its descendants."""
-        if isinstance(value, BaseNode):
+        if isinstance(value, fltast.BaseNode):
             return traverse_ast(value, func, exclude_attributes=exclude_attributes)
         if isinstance(value, list):
             return func(list(map(visit, value)))
@@ -522,11 +505,11 @@ def contains_reference_cycle(msg, compiler_env):
     # references.
     exclude_attributes = [
         # Message and Term attributes have already been loaded into the message_ids_to_ast dict,
-        (Message, "attributes"),
-        (Term, "attributes"),
+        (fltast.Message, "attributes"),
+        (fltast.Term, "attributes"),
         # for speed
-        (Message, "comment"),
-        (Term, "comment"),
+        (fltast.Message, "comment"),
+        (fltast.Term, "comment"),
     ]
 
     # We need to keep track of visited nodes. If we use just a single set for
@@ -545,7 +528,7 @@ def contains_reference_cycle(msg, compiler_env):
     checks = []
 
     def checker(node):
-        if isinstance(node, BaseNode):
+        if isinstance(node, fltast.BaseNode):
             node_id = id(node)
             if node_id in visited_node_stack[-1]:
                 checks.append(True)
@@ -558,7 +541,7 @@ def contains_reference_cycle(msg, compiler_env):
         # different nodes (messages via a runtime function call, terms via
         # inlining), including the fallback strategies that are used.
         sub_node = None
-        if isinstance(node, (MessageReference, TermReference)):
+        if isinstance(node, (fltast.MessageReference, fltast.TermReference)):
             ref_id = reference_to_id(node)
             if ref_id in message_ids_to_ast:
                 sub_node = message_ids_to_ast[ref_id]
@@ -680,7 +663,7 @@ def contains_reference_cycle(msg, compiler_env):
 
 
 @singledispatch
-def compile_expr(element: BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment):
+def compile_expr(element: fltast.BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment):
     """
     Compiles a Fluent expression into a Python one, return
     an object of type codegen.Expression.
@@ -692,22 +675,22 @@ def compile_expr(element: BaseNode, block: codegen.Block, compiler_env: Compiler
     raise NotImplementedError(f"Cannot handle object of type {type(element).__name__}")
 
 
-@compile_expr.register(Message)
+@compile_expr.register(fltast.Message)
 def compile_expr_message(message, block, compiler_env):
     return compile_expr(message.value, block, compiler_env)
 
 
-@compile_expr.register(Term)
+@compile_expr.register(fltast.Term)
 def compile_expr_term(term, block, compiler_env):
     return compile_expr(term.value, block, compiler_env)
 
 
-@compile_expr.register(Attribute)
+@compile_expr.register(fltast.Attribute)
 def compile_expr_attribute(attribute, block, compiler_env):
     return compile_expr(attribute.value, block, compiler_env)
 
 
-@compile_expr.register(Pattern)
+@compile_expr.register(fltast.Pattern)
 def compile_expr_pattern(pattern, block, compiler_env):
     parts = []
     subelements = pattern.elements
@@ -715,7 +698,7 @@ def compile_expr_pattern(pattern, block, compiler_env):
     use_isolating = compiler_env.should_use_isolating() and len(subelements) > 1
 
     for element in pattern.elements:
-        wrap_this_with_isolating = use_isolating and not isinstance(element, TextElement)
+        wrap_this_with_isolating = use_isolating and not isinstance(element, fltast.TextElement)
         if wrap_this_with_isolating:
             parts.append(wrap_with_escaper(codegen.String(FSI), block, compiler_env))
         parts.append(compile_expr(element, block, compiler_env))
@@ -730,29 +713,29 @@ def compile_expr_pattern(pattern, block, compiler_env):
     )
 
 
-@compile_expr.register(TextElement)
+@compile_expr.register(fltast.TextElement)
 def compile_expr_text(text, block, compiler_env):
     return wrap_with_mark_escaped(codegen.String(text.value), block, compiler_env)
 
 
-@compile_expr.register(StringLiteral)
+@compile_expr.register(fltast.StringLiteral)
 def compile_expr_string_expression(expr, block, compiler_env):
     return codegen.String(expr.parse()["value"])
 
 
-@compile_expr.register(NumberLiteral)
+@compile_expr.register(fltast.NumberLiteral)
 def compile_expr_number_expression(expr, block, compiler_env):
     number_expr = codegen.Number(numeric_to_native(expr.value))
     # > NUMBER($number_expr)
     return codegen.FunctionCall(BUILTIN_NUMBER, [number_expr], {}, block.scope)
 
 
-@compile_expr.register(Placeable)
+@compile_expr.register(fltast.Placeable)
 def compile_expr_placeable(placeable, block, compiler_env):
     return compile_expr(placeable.expression, block, compiler_env)
 
 
-@compile_expr.register(MessageReference)
+@compile_expr.register(fltast.MessageReference)
 def compile_expr_message_reference(reference, block, compiler_env):
     return handle_message_reference(reference, block, compiler_env)
 
@@ -773,7 +756,7 @@ def compile_term(term, block, compiler_env, new_escaper, term_args=None):
                 return compile_expr(term.value, block, compiler_env)
 
 
-@compile_expr.register(TermReference)
+@compile_expr.register(fltast.TermReference)
 def compile_expr_term_reference(reference, block, compiler_env):
     term, new_escaper, err_obj = lookup_term_reference(reference, block, compiler_env)
     if term is None:
@@ -796,7 +779,7 @@ def compile_expr_term_reference(reference, block, compiler_env):
     return compile_term(term, block, compiler_env, new_escaper, term_args=kwargs)
 
 
-@compile_expr.register(SelectExpression)
+@compile_expr.register(fltast.SelectExpression)
 def compile_expr_select_expression(select_expr, block, compiler_env):
     with compiler_env.modified(in_select_expression=True):
         key_value = compile_expr(select_expr.selector, block, compiler_env)
@@ -868,13 +851,13 @@ def compile_expr_select_expression(select_expr, block, compiler_env):
     return block.scope.variable(return_tmp_name)
 
 
-@compile_expr.register(Identifier)
+@compile_expr.register(fltast.Identifier)
 def compile_expr_variant_name(name, block, compiler_env):
     # TODO - handle numeric literals here?
     return codegen.String(name.name)
 
 
-@compile_expr.register(VariableReference)
+@compile_expr.register(fltast.VariableReference)
 def compile_expr_variable_reference(argument, block, compiler_env):
     name = argument.id.name
     if compiler_env.current.term_args is not None:
@@ -981,7 +964,7 @@ def compile_expr_variable_reference(argument, block, compiler_env):
     return block.scope.variable(arg_handled_tmp_name)
 
 
-@compile_expr.register(FunctionReference)
+@compile_expr.register(fltast.FunctionReference)
 def compile_expr_function_reference(expr, block, compiler_env):
     args = [compile_expr(arg, block, compiler_env) for arg in expr.arguments.positional]
     kwargs = {kwarg.name.name: compile_expr(kwarg.value, block, compiler_env) for kwarg in expr.arguments.named}
@@ -1126,14 +1109,14 @@ def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
 
 
 def is_cldr_plural_form_key(key_expr):
-    return isinstance(key_expr, Identifier) and key_expr.name in CLDR_PLURAL_FORMS
+    return isinstance(key_expr, fltast.Identifier) and key_expr.name in CLDR_PLURAL_FORMS
 
 
 def is_NUMBER_call_expr(expr):
     """
     Returns True if the object is a FTL ast.FunctionReference representing a call to NUMBER
     """
-    return isinstance(expr, FunctionReference) and expr.id.name == "NUMBER"
+    return isinstance(expr, fltast.FunctionReference) and expr.id.name == "NUMBER"
 
 
 def lookup_term_reference(ref, block, compiler_env):
@@ -1242,15 +1225,17 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
                 found = variant
                 break
         if key_is_string:
-            if isinstance(variant.key, Identifier) and key_ast.string_value == variant.key.name:
+            if isinstance(variant.key, fltast.Identifier) and key_ast.string_value == variant.key.name:
                 found = variant
                 break
         elif key_is_number:
-            if isinstance(variant.key, NumberLiteral) and key_number_value == numeric_to_native(variant.key.value):
+            if isinstance(variant.key, fltast.NumberLiteral) and key_number_value == numeric_to_native(
+                variant.key.value
+            ):
                 found = variant
                 break
             elif (
-                isinstance(variant.key, Identifier)
+                isinstance(variant.key, fltast.Identifier)
                 and compiler_env.plural_form_function(key_number_value) == variant.key.name
             ):
                 found = variant
