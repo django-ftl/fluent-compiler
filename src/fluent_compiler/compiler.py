@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from functools import singledispatch
 from typing import Callable, Sequence, Union
 
-import attr
 import babel
 import babel.plural
 from fluent.syntax import FluentParser
@@ -36,6 +35,7 @@ from fluent.syntax.ast import (
 
 from fluent_compiler.resource import FtlResource
 
+from . import ast_compat as ast
 from . import codegen, runtime
 from .builtins import BUILTINS
 from .compat import TypeAlias
@@ -169,21 +169,21 @@ class FtlSource:
         self.row, self.column = span_to_position(ast_node.span, ftl_resource.text)
 
 
-@attr.s
+@dataclass
 class CompiledFtl:
     # A dictionary of message IDs to Python functions. This is the primary
     # output that is needed to execute the FTL - the functions simply need to be
     # called with a dictionary of external arguments, and a list to which
     # runtime errors will be added.
-    message_functions = attr.ib(factory=dict)
+    message_functions: dict[str, MessageFunc] = field(default_factory=dict)
     # A list of parsing and compilation errors, where each item is
     # (message_id or None, exception object)
-    errors = attr.ib(factory=list)
+    errors: list[tuple[str | None, Exception]] = field(default_factory=list)
 
     # Compiled output as Python AST.
-    module_ast = attr.ib(default=None)
+    module_ast: ast.Module | None = None
 
-    locale = attr.ib(default=None)
+    locale: babel.Locale | None = None
 
 
 def compile_messages(locale, resources, use_isolating=True, functions=None, escapers=None):
