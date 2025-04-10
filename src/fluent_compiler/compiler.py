@@ -9,7 +9,7 @@ import decimal
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Callable, Sequence, Union
+from typing import Callable, Sequence, Tuple, Union
 
 import babel
 import babel.plural
@@ -111,7 +111,9 @@ class CurrentEnvironment:
 
 PluralFormFunc: TypeAlias = Callable[[Union[float, decimal.Decimal]], str]
 
-MessageFunc: TypeAlias = Callable[[dict, list], str]
+MessageFunc: TypeAlias = Callable[[Union[dict, None], list], str]
+
+CompilationErrorItem: TypeAlias = Tuple[Union[str, None], Exception]
 
 
 @dataclass
@@ -120,7 +122,7 @@ class CompilerEnvironment:
     plural_form_function: PluralFormFunc
     use_isolating: bool
     message_mapping: dict[str, str] = field(default_factory=dict)
-    errors: list = field(default_factory=list)
+    errors: list[CompilationErrorItem] = field(default_factory=list)
     escapers: Sequence[RegisteredEscaper] | None = None
     functions: dict[str, Callable] = field(default_factory=dict)
     function_renames: dict[str, str] = field(default_factory=dict)
@@ -178,7 +180,7 @@ class CompiledFtl:
     message_functions: dict[str, MessageFunc] = field(default_factory=dict)
     # A list of parsing and compilation errors, where each item is
     # (message_id or None, exception object)
-    errors: list[tuple[str | None, Exception]] = field(default_factory=list)
+    errors: list[CompilationErrorItem] = field(default_factory=list)
 
     # Compiled output as Python AST.
     module_ast: ast.Module | None = None
