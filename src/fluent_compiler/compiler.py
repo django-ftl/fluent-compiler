@@ -1,9 +1,11 @@
 # The heart of the FTL -> Python compiler. See the architecture docs in
 # ARCHITECTURE.rst for the big picture, and comments on compile_expr below.
+from __future__ import annotations
 
 import builtins
 import contextlib
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from functools import singledispatch
 
 import attr
@@ -28,6 +30,8 @@ from fluent.syntax.ast import (
     VariableReference,
 )
 
+from fluent_compiler.resource import FtlResource
+
 from . import codegen, runtime
 from .builtins import BUILTINS
 from .errors import (
@@ -37,7 +41,15 @@ from .errors import (
     FluentJunkFound,
     FluentReferenceError,
 )
-from .escapers import EscaperJoin, RegisteredEscaper, escaper_for_message, escapers_compatible, identity, null_escaper
+from .escapers import (
+    Escaper,
+    EscaperJoin,
+    RegisteredEscaper,
+    escaper_for_message,
+    escapers_compatible,
+    identity,
+    null_escaper,
+)
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (
     ATTRIBUTE_SEPARATOR,
@@ -80,15 +92,15 @@ CLDR_PLURAL_FORMS = {
 PROPERTY_EXTERNAL_ARG = "PROPERTY_EXTERNAL_ARG"
 
 
-@attr.s
+@dataclass
 class CurrentEnvironment:
     # The parts of CompilerEnvironment that we want to mutate (and restore)
     # temporarily for some parts of a call chain.
-    message_id = attr.ib(default=None)
-    ftl_resource = attr.ib(default=None)
-    term_args = attr.ib(default=None)
-    in_select_expression = attr.ib(default=False)
-    escaper = attr.ib(default=null_escaper)
+    message_id: str | None = None
+    ftl_resource: FtlResource | None = None
+    term_args: dict | None = None
+    in_select_expression: bool = False
+    escaper: Escaper = field(default_factory=lambda: null_escaper)
 
 
 @attr.s

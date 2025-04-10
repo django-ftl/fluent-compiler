@@ -1,4 +1,8 @@
-from types import SimpleNamespace
+from __future__ import annotations
+
+from typing import Callable
+
+from attr import dataclass
 
 from . import codegen
 
@@ -20,7 +24,19 @@ def select_always(message_id=None, **kwargs):
     return True
 
 
-null_escaper = SimpleNamespace(
+@dataclass
+class Escaper:
+    # TODO - refine these types
+    select: Callable
+    output_type: type
+    escape: Callable
+    mark_escaped: Callable
+    join: Callable
+    name: str
+    use_isolating: bool | None
+
+
+null_escaper = Escaper(
     select=select_always,
     output_type=str,
     escape=identity,
