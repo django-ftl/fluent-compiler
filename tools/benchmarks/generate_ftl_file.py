@@ -1,12 +1,12 @@
 import argparse
 import random
+from dataclasses import dataclass
 
-import attrs
 from fluent.syntax import serialize
 from fluent.syntax.ast import Comment, Identifier, Message, Pattern, Placeable, Resource, TextElement, VariableReference
 
 
-@attrs.frozen
+@dataclass(frozen=True)
 class ItemRatios:
     """
     Represent the ratios of different items inside the generated ftl file
@@ -16,7 +16,7 @@ class ItemRatios:
     comment: int
 
 
-@attrs.frozen
+@dataclass(frozen=True)
 class ElementCountRatios:
     """
     Represent the ratios of the different count of elements within a pattern
@@ -28,7 +28,7 @@ class ElementCountRatios:
     four: int
 
 
-@attrs.frozen
+@dataclass(frozen=True)
 class Config:
     filename: str
     num_items: int
