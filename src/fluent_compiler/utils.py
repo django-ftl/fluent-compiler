@@ -2,20 +2,22 @@ import builtins
 import inspect
 import keyword
 import re
+from typing import List, Tuple, Union
 
 from fluent.syntax.ast import Term, TermReference
 
+from .compat import TypeAlias
 from .errors import FluentFormatError
 
 TERM_SIGIL = "-"
 ATTRIBUTE_SEPARATOR = "."
 
 
-class Any:
+class AnyArgType:
     pass
 
 
-Any = Any()
+AnyArg = AnyArgType()
 
 
 # From spec:
@@ -40,7 +42,7 @@ def ast_to_id(ast):
     return ast.id.name
 
 
-def attribute_ast_to_id(attribute, parent_ast):
+def attribute_ast_to_id(attribute, parent_ast) -> str:
     """
     Returns a string reference for an Attribute, given Attribute and parent Term or Message
     """
@@ -61,7 +63,10 @@ def allowable_name(ident, for_method=False, allow_builtin=False):
     return True
 
 
-def inspect_function_args(function, name, errors):
+FunctionArgSpec: TypeAlias = Tuple[Union[int, AnyArgType], Union[List[str], AnyArgType]]
+
+
+def inspect_function_args(function, name, errors) -> FunctionArgSpec:
     """
     For a Python function, returns a 2 tuple containing:
     (number of positional args or Any,
@@ -76,7 +81,7 @@ def inspect_function_args(function, name, errors):
     parameters = list(sig.parameters.values())
 
     positional = (
-        Any
+        AnyArg
         if any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in parameters)
         else len(
             list(
@@ -88,7 +93,7 @@ def inspect_function_args(function, name, errors):
     )
 
     keywords = (
-        Any
+        AnyArg
         if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters)
         else [p.name for p in parameters if p.default != inspect.Parameter.empty]
     )
@@ -115,13 +120,13 @@ def args_match(function_name, args, kwargs, arg_spec):
     positional_arg_count, allowed_kwargs = arg_spec
     match = True
     for kwarg_name, kwarg_val in kwargs.items():
-        if (allowed_kwargs is Any and allowable_keyword_arg_name(kwarg_name)) or (
-            allowed_kwargs is not Any and kwarg_name in allowed_kwargs
+        if (allowed_kwargs is AnyArg and allowable_keyword_arg_name(kwarg_name)) or (
+            allowed_kwargs is not AnyArg and kwarg_name in allowed_kwargs
         ):
             sanitized_kwargs[kwarg_name] = kwarg_val
         else:
             errors.append(TypeError(f"{function_name}() got an unexpected keyword argument '{kwarg_name}'"))
-    if positional_arg_count is Any:
+    if positional_arg_count is AnyArg:
         sanitized_args = args
     else:
         sanitized_args = tuple(args[0:positional_arg_count])
@@ -164,13 +169,13 @@ def reference_to_id(ref, ignore_attributes=False):
     return start
 
 
-def sanitize_function_args(arg_spec, name, errors):
+def sanitize_function_args(arg_spec, name, errors) -> FunctionArgSpec:
     """
     Check function arg spec is legitimate, returning a cleaned
     up version, and adding any errors to errors list.
     """
     positional_args, keyword_args = arg_spec
-    if keyword_args is Any:
+    if keyword_args is AnyArg:
         cleaned_kwargs = keyword_args
     else:
         cleaned_kwargs = []

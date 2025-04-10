@@ -1,7 +1,7 @@
 import unittest
 
 from fluent_compiler.errors import FluentFormatError
-from fluent_compiler.utils import Any, inspect_function_args
+from fluent_compiler.utils import AnyArg, inspect_function_args
 
 
 class TestInspectFunctionArgs(unittest.TestCase):
@@ -11,16 +11,16 @@ class TestInspectFunctionArgs(unittest.TestCase):
         self.assertEqual(inspect_function_args(lambda x, y: None, "name", []), (2, []))
 
     def test_inspect_function_args_var_positional(self):
-        self.assertEqual(inspect_function_args(lambda *args: None, "name", []), (Any, []))
+        self.assertEqual(inspect_function_args(lambda *args: None, "name", []), (AnyArg, []))
 
     def test_inspect_function_args_keywords(self):
         self.assertEqual(inspect_function_args(lambda x, y=1, z=2: None, "name", []), (1, ["y", "z"]))
 
     def test_inspect_function_args_var_keywords(self):
-        self.assertEqual(inspect_function_args(lambda x, **kwargs: None, "name", []), (1, Any))
+        self.assertEqual(inspect_function_args(lambda x, **kwargs: None, "name", []), (1, AnyArg))
 
     def test_inspect_function_args_var_positional_plus_keywords(self):
-        self.assertEqual(inspect_function_args(lambda x, y=1, *args: None, "name", []), (Any, ["y"]))
+        self.assertEqual(inspect_function_args(lambda x, y=1, *args: None, "name", []), (AnyArg, ["y"]))
 
     def test_inspect_function_args_bad_keyword_args(self):
         def foo():

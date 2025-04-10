@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import builtins
 import contextlib
+import dataclasses
+import decimal
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import singledispatch
+from typing import Callable, Sequence, Union
 
 import attr
 import babel
+import babel.plural
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import (
     Attribute,
@@ -34,6 +38,7 @@ from fluent_compiler.resource import FtlResource
 
 from . import codegen, runtime
 from .builtins import BUILTINS
+from .compat import TypeAlias
 from .errors import (
     FluentCyclicReferenceError,
     FluentDuplicateMessageId,
@@ -54,6 +59,7 @@ from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (
     ATTRIBUTE_SEPARATOR,
     TERM_SIGIL,
+    FunctionArgSpec,
     args_match,
     ast_to_id,
     attribute_ast_to_id,
@@ -103,20 +109,25 @@ class CurrentEnvironment:
     escaper: Escaper = field(default_factory=lambda: null_escaper)
 
 
-@attr.s
+PluralFormFunc: TypeAlias = Callable[[Union[float, decimal.Decimal]], str]
+
+MessageFunc: TypeAlias = Callable[[dict, list], str]
+
+
+@dataclass
 class CompilerEnvironment:
-    locale = attr.ib()
-    plural_form_function = attr.ib()
-    use_isolating = attr.ib()
-    message_mapping = attr.ib(factory=dict)
-    errors = attr.ib(factory=list)
-    escapers = attr.ib(default=None)
-    functions = attr.ib(factory=dict)
-    function_renames = attr.ib(factory=dict)
-    functions_arg_spec = attr.ib(factory=dict)
-    message_ids_to_ast = attr.ib(factory=dict)
-    term_ids_to_ast = attr.ib(factory=dict)
-    current = attr.ib(factory=CurrentEnvironment)
+    locale: babel.Locale
+    plural_form_function: PluralFormFunc
+    use_isolating: bool
+    message_mapping: dict[str, str] = field(default_factory=dict)
+    errors: list = field(default_factory=list)
+    escapers: Sequence[RegisteredEscaper] | None = None
+    functions: dict[str, Callable] = field(default_factory=dict)
+    function_renames: dict[str, str] = field(default_factory=dict)
+    functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
+    message_ids_to_ast: dict[str, Message] = field(default_factory=dict)
+    term_ids_to_ast: dict[str, Term] = field(default_factory=dict)
+    current: CurrentEnvironment = field(default_factory=CurrentEnvironment)
 
     def add_current_message_error(self, error):
         self.errors.append((self.current.message_id, error))
@@ -131,9 +142,9 @@ class CompilerEnvironment:
         environment, restoring the old data at the end.
         """
         # CurrentEnvironment only has immutable args at the moment, so the
-        # shallow copy returned by attr.evolve is fine.
+        # shallow copy returned by dataclasses.replace is fine.
         old_current = self.current
-        self.current = attr.evolve(old_current, **replacements)
+        self.current = dataclasses.replace(old_current, **replacements)
         yield self
         self.current = old_current
 
@@ -268,7 +279,13 @@ def _parse_resources(ftl_resources):
     return output_dict, parsing_issues
 
 
-def messages_to_module(messages, locale, use_isolating=True, functions=None, escapers=None):
+def messages_to_module(
+    messages: dict[str, Message | Term],
+    locale: babel.Locale,
+    use_isolating: bool = True,
+    functions: dict[str, Callable] | None = None,
+    escapers: Sequence[Escaper] | None = None,
+) -> tuple:
     """
     Compile a set of {id: Message/Term objects} to a Python module, returning a tuple:
     (codegen.Module object, dictionary mapping message IDs to Python functions,
