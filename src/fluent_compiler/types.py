@@ -4,9 +4,10 @@ import warnings
 from dataclasses import dataclass
 from datetime import date, datetime, tzinfo
 from decimal import Decimal
-from typing import Literal, get_args
+from typing import Any, Literal, get_args, overload
 
 import pytz
+from babel.core import Locale
 from babel.dates import format_date, format_time, get_datetime_format, get_timezone
 from babel.numbers import NumberPattern, get_currency_name, get_currency_unit_pattern, parse_pattern
 
@@ -63,13 +64,13 @@ class FluentType:
 
 
 class FluentNone(FluentType):
-    def __init__(self, name=None):
+    def __init__(self, name: str | None = None):
         self.name = name
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, FluentNone) and self.name == other.name
 
-    def format(self, locale):
+    def format(self, locale: Locale) -> str:
         return self.name or "???"
 
     def __repr__(self):
@@ -103,11 +104,11 @@ class NumberFormatOptions:
 class FluentNumber(FluentType):
     default_number_format_options = NumberFormatOptions()
 
-    def __new__(cls, value, **kwargs):
+    def __new__(cls: type[FluentNumber], value: Decimal | float | FluentFloat | int, **kwargs) -> FluentNumber:
         self = super().__new__(cls, value)
         return self._init(value, kwargs)
 
-    def _init(self, value, kwargs):
+    def _init(self, value: Decimal | float | FluentNumber | int, kwargs: dict[str, int | str | bool]) -> FluentNumber:
         self.options = merge_options(
             NumberFormatOptions,
             getattr(value, "options", self.default_number_format_options),
@@ -119,7 +120,7 @@ class FluentNumber(FluentType):
 
         return self
 
-    def format(self, locale):
+    def format(self, locale: Locale) -> str:
         if self.options.style == FORMAT_STYLE_DECIMAL:
             base_pattern = locale.decimal_formats.get(None)
             pattern = self._apply_options(base_pattern)
@@ -136,7 +137,7 @@ class FluentNumber(FluentType):
                 pattern = self._apply_options(base_pattern)
                 return pattern.apply(self, locale, currency=self.options.currency, currency_digits=False)
 
-    def _apply_options(self, pattern):
+    def _apply_options(self, pattern: NumberPattern) -> NumberPattern:
         # We are essentially trying to copy the
         # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NumberFormat
         # API using Babel number formatting routines, which is slightly awkward
@@ -186,7 +187,7 @@ class FluentNumber(FluentType):
 
         return pattern
 
-    def _format_currency_long_name(self, locale):
+    def _format_currency_long_name(self, locale: Locale) -> str:
         # This reproduces some of bable.numbers._format_currency_long_name
         # Step 3.
         unit_pattern = get_currency_unit_pattern(self.options.currency, count=self, locale=locale)
@@ -206,7 +207,29 @@ class FluentNumber(FluentType):
         return unit_pattern.format(number_part, display_name)
 
 
-def merge_options(options_class, base, kwargs):
+@overload
+def merge_options(
+    options_class: type[DateFormatOptions],
+    base: DateFormatOptions | None,
+    kwargs: dict[str, int | str | bool],
+) -> DateFormatOptions:
+    ...
+
+
+@overload
+def merge_options(
+    options_class: type[NumberFormatOptions],
+    base: NumberFormatOptions | None,
+    kwargs: dict[str, int | str | bool],
+) -> NumberFormatOptions:
+    ...
+
+
+def merge_options(
+    options_class: type[DateFormatOptions] | type[NumberFormatOptions],
+    base: DateFormatOptions | NumberFormatOptions | None,
+    kwargs: dict[str, int | str | bool],
+) -> DateFormatOptions | NumberFormatOptions:
     """
     Given an 'options_class', an optional 'base' object to copy from,
     and some keyword arguments, create a new options instance
@@ -255,7 +278,7 @@ class FluentDecimal(FluentNumber, Decimal):
     pass
 
 
-def fluent_number(number, **kwargs):
+def fluent_number(number: Any, **kwargs) -> FluentNone | FluentNumber:
     if isinstance(number, FluentNumber) and not kwargs:
         return number
     if isinstance(number, int):
@@ -292,7 +315,7 @@ fluent_number.ftl_arg_spec = (
 _UNGROUPED_PATTERN = parse_pattern("#0")
 
 
-def clone_pattern(pattern):
+def clone_pattern(pattern: NumberPattern) -> NumberPattern:
     return NumberPattern(
         pattern.pattern,
         pattern.prefix,
@@ -346,7 +369,7 @@ class FluentDateType(FluentType):
     # some Python implementation (e.g. PyPy) implement some methods.
     # So we leave those alone, and implement another `_init_options`
     # which is called from other constructors.
-    def _init_options(self, dt_obj, kwargs):
+    def _init_options(self, dt_obj: date | datetime | FluentDate, kwargs: dict[str, str | bool]):
         if "timeStyle" in kwargs and not isinstance(self, datetime):
             raise TypeError("timeStyle option can only be specified for datetime instances, not date instance")
 
@@ -355,7 +378,7 @@ class FluentDateType(FluentType):
             if k not in _SUPPORTED_DATETIME_OPTIONS:
                 warnings.warn(f"FluentDateType option {k} is not yet supported")
 
-    def format(self, locale):
+    def format(self, locale: Locale) -> str:
         if isinstance(self, datetime):
             selftz = _ensure_datetime_tzinfo(self, tzinfo_obj=self.options.timeZone)
         else:
@@ -383,7 +406,7 @@ class FluentDateType(FluentType):
             )
 
 
-def _ensure_datetime_tzinfo(dt, tzinfo_obj: tzinfo | None = None):
+def _ensure_datetime_tzinfo(dt: FluentDateTime, tzinfo_obj: tzinfo | None = None) -> FluentDateTime:
     """
     Ensure the datetime passed has an attached tzinfo.
     """
@@ -399,7 +422,7 @@ def _ensure_datetime_tzinfo(dt, tzinfo_obj: tzinfo | None = None):
 
 class FluentDate(FluentDateType, date):
     @classmethod
-    def from_date(cls, dt_obj, **kwargs):
+    def from_date(cls, dt_obj: date | FluentDate, **kwargs) -> FluentDate:
         obj = cls(dt_obj.year, dt_obj.month, dt_obj.day)
         obj._init_options(dt_obj, kwargs)
         return obj
@@ -407,7 +430,7 @@ class FluentDate(FluentDateType, date):
 
 class FluentDateTime(FluentDateType, datetime):
     @classmethod
-    def from_date_time(cls, dt_obj, **kwargs):
+    def from_date_time(cls, dt_obj: datetime, **kwargs) -> FluentDateTime:
         obj = cls(
             dt_obj.year,
             dt_obj.month,
@@ -422,7 +445,7 @@ class FluentDateTime(FluentDateType, datetime):
         return obj
 
 
-def fluent_date(dt, **kwargs):
+def fluent_date(dt: date | datetime | FluentDateType, **kwargs) -> FluentDateType:
     if isinstance(dt, FluentDateType) and not kwargs:
         return dt
     if isinstance(dt, datetime):
