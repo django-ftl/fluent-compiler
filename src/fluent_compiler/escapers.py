@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable
+from ast import Call
+from typing import TYPE_CHECKING, Callable
 
 from attr import dataclass
+
+if TYPE_CHECKING:
+    from .codegen import Expression, Function, FunctionCall
+    from .compiler import CompilerEnvironment
 
 from . import codegen
 
@@ -27,6 +32,7 @@ def select_always(message_id=None, **kwargs):
 @dataclass
 class Escaper:
     # TODO - refine these types
+    # TODO - make protocol/abstract type for escaper
     select: Callable
     output_type: type
     escape: Callable
@@ -47,7 +53,7 @@ null_escaper = Escaper(
 )
 
 
-def escapers_compatible(outer_escaper, inner_escaper):
+def escapers_compatible(outer_escaper: Escaper | RegisteredEscaper, inner_escaper: Escaper | RegisteredEscaper) -> bool:
     # Messages with no escaper defined can always be used from other messages,
     # because the outer message will do the escaping, and the inner message will
     # always return a simple string which must be handle by all escapers.
@@ -59,7 +65,7 @@ def escapers_compatible(outer_escaper, inner_escaper):
     return outer_escaper.name == inner_escaper.name
 
 
-def escaper_for_message(escapers, message_id):
+def escaper_for_message(escapers: list[RegisteredEscaper] | None, message_id: str) -> Escaper | RegisteredEscaper:
     if escapers is not None:
         for escaper in escapers:
             if escaper.select(message_id=message_id):
@@ -74,7 +80,7 @@ class RegisteredEscaper:
     functions are called in the compiler environment.
     """
 
-    def __init__(self, escaper, compiler_env):
+    def __init__(self, escaper: Escaper, compiler_env: CompilerEnvironment):
         self._escaper = escaper
         self._compiler_env = compiler_env
 
@@ -82,30 +88,32 @@ class RegisteredEscaper:
         return f"<RegisteredEscaper {self.name}>"
 
     @property
-    def select(self):
+    def select(self) -> Callable:
         return self._escaper.select
 
     @property
-    def output_type(self):
+    def output_type(self) -> type:
         return self._escaper.output_type
 
     @property
-    def escape(self):
+    def escape(self) -> Callable:
         return self._escaper.escape
 
     @property
-    def mark_escaped(self):
+    def mark_escaped(self) -> Callable:
         return self._escaper.mark_escaped
 
     @property
-    def join(self):
+    def join(self) -> Callable:
         return self._escaper.join
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._escaper.name
 
-    def get_reserved_names_with_properties(self):
+    def get_reserved_names_with_properties(
+        self,
+    ) -> list[tuple[str, object, dict[str, object]]]:
         # escaper.output_type, escaper.mark_escaped, escaper.escape, escaper.join
         return [
             (self.output_type_name(), self._escaper.output_type, {}),
@@ -126,35 +134,35 @@ class RegisteredEscaper:
             ),
         ]
 
-    def _prefix(self):
+    def _prefix(self) -> str:
         idx = self._compiler_env.escapers.index(self)
         return f"escaper_{idx}_"
 
-    def output_type_name(self):
+    def output_type_name(self) -> str:
         return f"{self._prefix()}_output_type"
 
-    def mark_escaped_name(self):
+    def mark_escaped_name(self) -> str:
         return f"{self._prefix()}_mark_escaped"
 
-    def escape_name(self):
+    def escape_name(self) -> str:
         return f"{self._prefix()}_escape"
 
-    def join_name(self):
+    def join_name(self) -> str:
         return f"{self._prefix()}_join"
 
     @property
-    def use_isolating(self):
+    def use_isolating(self) -> bool | None:
         return getattr(self._escaper, "use_isolating", None)
 
 
 class EscaperJoin(codegen.StringJoin):
-    def __init__(self, parts, escaper, scope):
+    def __init__(self, parts: list[FunctionCall], escaper: RegisteredEscaper, scope: Function):
         super().__init__(parts)
         self.type = escaper.output_type
         self.escaper = escaper
         self.scope = scope
 
-    def as_ast(self):
+    def as_ast(self) -> Call:
         if self.escaper.join is default_join:
             return super().as_ast()
         else:
@@ -167,7 +175,7 @@ class EscaperJoin(codegen.StringJoin):
             ).as_ast()
 
     @classmethod
-    def build(cls, parts, escaper, scope):
+    def build(cls, parts: list[Expression], escaper: Escaper | RegisteredEscaper, scope: Function) -> Expression:
         if escaper.name == null_escaper.name:
             return codegen.StringJoin.build(parts)
 
