@@ -1,12 +1,15 @@
 """
 Utilities for doing Python code generation
 """
+from __future__ import annotations
 
 import keyword
 import platform
 import re
+from typing import Callable, Sequence, Union
 
 from . import ast_compat as ast
+from .compat import TypeAlias
 from .utils import allowable_keyword_arg_name, allowable_name
 
 # This module provides simple utilities for building up Python source code. It
@@ -81,12 +84,10 @@ class PythonAst:
     Generates real `ast.*` nodes via `as_ast()` method.
     """
 
-    def as_ast(self):
+    def as_ast(self) -> ast.AST:
         raise NotImplementedError(f"{self.__class__!r}.as_ast()")
 
-    @property
-    def child_elements(self):
-        raise NotImplementedError(f"{self.__class__!r}.child_elements")
+    child_elements: list[str] = NotImplemented
 
 
 class PythonAstList:
@@ -95,12 +96,10 @@ class PythonAstList:
     list of AST objects.
     """
 
-    def as_ast_list(self):
+    def as_ast_list(self) -> Sequence[ast.AST]:
         raise NotImplementedError(f"{self.__class__!r}.as_ast_list()")
 
-    @property
-    def child_elements(self):
-        raise NotImplementedError(f"child_elements needs to be created on {type(self)}")
+    child_elements: list[str] = NotImplemented
 
 
 # `compile` builtin needs these attributes on AST nodes.
@@ -113,7 +112,7 @@ DEFAULT_AST_ARGS_ARGUMENTS = dict()
 
 
 class Scope:
-    def __init__(self, parent_scope=None):
+    def __init__(self, parent_scope: Scope | None = None):
         self.parent_scope = parent_scope
         self.names = set()
         self._function_arg_reserved_names = set()
@@ -150,7 +149,7 @@ class Scope:
         (e.g. the type associated with a name)
         """
 
-        def _add(final):
+        def _add(final: str):
             self.names.add(final)
             self._properties[final] = properties or {}
             return final
@@ -859,7 +858,7 @@ class Or(BoolOp):
     op = ast.Or
 
 
-def traverse(ast_node, func):
+def traverse(ast_node: ast.AST, func: Callable[[ast.AST], None]):
     """
     Apply 'func' to ast_node (which is `ast.*` object)
     """
@@ -881,7 +880,13 @@ def simplify(codegen_ast, simplifier):
     return codegen_ast
 
 
-def rewriting_traverse(node, func):
+PythonAstType: TypeAlias = Union[PythonAst, PythonAstList]
+
+
+def rewriting_traverse(
+    node: PythonAstType | list | tuple | dict,
+    func: Callable[[PythonAstType], PythonAstType],
+):
     """
     Apply 'func' to node and all sub PythonAst nodes
     """
@@ -900,7 +905,7 @@ def rewriting_traverse(node, func):
             rewriting_traverse(v, func)
 
 
-def morph_into(item, new_item):
+def morph_into(item: object, new_item: object) -> None:
     # This naughty little function allows us to make `item` behave like
     # `new_item` in every way, except it maintains the identity of `item`, so
     # that we don't have to rewrite a tree of objects with new objects.
