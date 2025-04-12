@@ -6,7 +6,7 @@ from __future__ import annotations
 import keyword
 import platform
 import re
-from typing import TYPE_CHECKING, Callable, Sequence, TypedDict, Union
+from typing import TYPE_CHECKING, Callable, Protocol, Sequence, TypedDict, Union, runtime_checkable
 
 if TYPE_CHECKING:
     # TODO move FtlSource to its own module
@@ -275,6 +275,12 @@ class Statement:
     pass
 
 
+@runtime_checkable
+class SupportsNameAssignment(Protocol):
+    def has_assignment_for_name(self, name: str) -> bool:
+        ...
+
+
 class _Assignment(Statement, PythonAst):
     child_elements = ["value"]
 
@@ -290,6 +296,9 @@ class _Assignment(Statement, PythonAst):
             value=self.value.as_ast(),
             **DEFAULT_AST_ARGS,
         )
+
+    def has_assignment_for_name(self, name: str) -> bool:
+        return self.name == name
 
 
 class Block(PythonAstList):
@@ -355,11 +364,8 @@ class Block(PythonAstList):
 
     def has_assignment_for_name(self, name):
         for s in self.statements:
-            if isinstance(s, _Assignment) and s.name == name:
+            if isinstance(s, SupportsNameAssignment) and s.has_assignment_for_name(name):
                 return True
-            elif hasattr(s, "has_assignment_for_name"):
-                if s.has_assignment_for_name(name):
-                    return True
         if self.parent_block is not None:
             return self.parent_block.has_assignment_for_name(name)
         return False
@@ -431,14 +437,14 @@ class Function(Scope, Statement, PythonAst):
             returns=None,  # ast_decompiler compat
             **DEFAULT_AST_ARGS,
         )
-        if self.source is not None and self.source.filename is not None:
-            func_def.filename = self.source.filename  # See Module.as_multiple_module_ast
+        if (source := self.source) is not None and source.filename is not None:
+            func_def.filename = source.filename  # See Module.as_multiple_module_ast
 
             # It's hard to get good line numbers for all AST objects, but
             # if we put the FTL line number of the main message on all nodes
             # this gets us a lot of the benefit for a smallish cost
             def add_lineno(node):
-                node.lineno = self.source.row
+                node.lineno = source.row
 
             traverse(func_def, add_lineno)
         return func_def
@@ -617,8 +623,8 @@ class Dict(Expression):
 
     def as_ast(self):
         return ast.Dict(
-            keys=[k.as_ast() for k, v in self.pairs],
-            values=[v.as_ast() for k, v in self.pairs],
+            keys=[k.as_ast() for k, _ in self.pairs],
+            values=[v.as_ast() for _, v in self.pairs],
             **DEFAULT_AST_ARGS,
         )
 
@@ -759,7 +765,7 @@ class FunctionCall(Expression):
             # decompiles to something more recognisably correct, we pretend this
             # is necessary).
             kwarg_pairs = list(sorted(self.kwargs.items()))
-            kwarg_names, kwarg_values = [k for k, v in kwarg_pairs], [v for k, v in kwarg_pairs]
+            kwarg_names, kwarg_values = [k for k, _ in kwarg_pairs], [v for _, v in kwarg_pairs]
             return ast.Call(
                 func=ast.Name(id=self.function_name, ctx=ast.Load(), **DEFAULT_AST_ARGS),
                 args=[arg.as_ast() for arg in self.args],
