@@ -62,3 +62,5 @@ keyword = ast.keyword
 walk = ast.walk
 Constant = ast.Constant
 AST = ast.AST
+stmt = ast.stmt
+expr = ast.expr

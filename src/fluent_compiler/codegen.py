@@ -6,7 +6,11 @@ from __future__ import annotations
 import keyword
 import platform
 import re
-from typing import Callable, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Sequence, TypedDict, Union
+
+if TYPE_CHECKING:
+    # TODO move FtlSource to its own module
+    from .compiler import FtlSource
 
 from . import ast_compat as ast
 from .compat import TypeAlias
@@ -96,7 +100,7 @@ class PythonAstList:
     list of AST objects.
     """
 
-    def as_ast_list(self) -> Sequence[ast.AST]:
+    def as_ast_list(self) -> list[ast.stmt]:
         raise NotImplementedError(f"{self.__class__!r}.as_ast_list()")
 
     child_elements: list[str] = NotImplemented
@@ -104,7 +108,14 @@ class PythonAstList:
 
 # `compile` builtin needs these attributes on AST nodes.
 # It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
-DEFAULT_AST_ARGS = dict(lineno=1, col_offset=1)
+
+
+class DefaultAstArgs(TypedDict):
+    lineno: int
+    col_offset: int
+
+
+DEFAULT_AST_ARGS: DefaultAstArgs = {"lineno": 1, "col_offset": 1}
 # Some AST types have different requirements:
 DEFAULT_AST_ARGS_MODULE = dict()
 DEFAULT_AST_ARGS_ADD = dict()
@@ -204,6 +215,8 @@ class Scope:
         """
         if name in self._properties:
             return self._properties[name]
+        if self.parent_scope is None:
+            raise LookupError(f"{name} not found in properties")
         return self.parent_scope.get_name_properties(name)
 
     def set_name_properties(self, name, props):
@@ -213,6 +226,8 @@ class Scope:
         """
         scope = self
         while True:
+            if scope is None:
+                raise LookupError(f"{name} not found in properties")
             if name in scope._properties:
                 scope._properties[name].update(props)
                 break
@@ -280,15 +295,15 @@ class _Assignment(Statement, PythonAst):
 class Block(PythonAstList):
     child_elements = ["statements"]
 
-    def __init__(self, scope, parent_block=None):
+    def __init__(self, scope: Scope, parent_block: Block | None = None):
         self.scope = scope
-        self.statements = []
+        self.statements: list[Expression | Block] = []
         self.parent_block = parent_block
 
-    def as_ast_list(self, allow_empty=True):
+    def as_ast_list(self, allow_empty=True) -> list[ast.stmt]:
         retval = []
         for s in self.statements:
-            if hasattr(s, "as_ast_list"):
+            if isinstance(s, PythonAstList):
                 retval.extend(s.as_ast_list(allow_empty=True))
             else:
                 if isinstance(s, Statement):
@@ -372,7 +387,13 @@ class Module(Block, PythonAst):
 class Function(Scope, Statement, PythonAst):
     child_elements = ["body"]
 
-    def __init__(self, name, args=None, parent_scope=None, source=None):
+    def __init__(
+        self,
+        name: str,
+        args: Sequence[str] | None = None,
+        parent_scope: Scope | None = None,
+        source: FtlSource | None = None,
+    ):
         super().__init__(parent_scope=parent_scope)
         self.body = Block(self)
         self.func_name = name
@@ -442,7 +463,7 @@ class Return(Statement, PythonAst):
 class If(Statement, PythonAst):
     child_elements = ["if_blocks", "conditions", "else_block"]
 
-    def __init__(self, parent_scope, parent_block=None):
+    def __init__(self, parent_scope: Scope, parent_block: Block | None = None):
         # We model a "compound if statement" as a list of if blocks
         # (if/elif/elif etc), each with their own condition, with a final else
         # block. Note this is quite different from Python's AST for the same
@@ -483,6 +504,7 @@ class If(Statement, PythonAst):
             current_if = ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)
 
         if self.else_block.statements:
+            assert previous_if is not None
             previous_if.orelse = self.else_block.as_ast_list()
 
         return if_ast
@@ -533,6 +555,9 @@ class Expression(PythonAst):
     # type represents the Python type this expression will produce,
     # if we know it (UNKNOWN_TYPE otherwise).
     type = UNKNOWN_TYPE
+
+    def as_ast(self) -> ast.expr:
+        raise NotImplementedError()
 
 
 class String(Expression):
