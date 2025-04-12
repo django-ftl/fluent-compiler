@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, Sequence
 from attr import dataclass
 
 if TYPE_CHECKING:
-    from .codegen import Expression, Function, FunctionCall
+    from .codegen import Expression, FunctionCall
     from .compiler import CompilerEnvironment
 
 from . import codegen
@@ -158,7 +158,7 @@ class RegisteredEscaper:
 
 
 class EscaperJoin(codegen.StringJoin):
-    def __init__(self, parts: list[FunctionCall], escaper: RegisteredEscaper, scope: Function):
+    def __init__(self, parts: list[FunctionCall], escaper: RegisteredEscaper, scope: codegen.Scope):
         super().__init__(parts)
         self.type = escaper.output_type
         self.escaper = escaper
@@ -177,7 +177,7 @@ class EscaperJoin(codegen.StringJoin):
             ).as_ast()
 
     @classmethod
-    def build(cls, parts: list[Expression], escaper: Escaper | RegisteredEscaper, scope: Function) -> Expression:
+    def build(cls, parts: list[Expression], escaper: RegisteredEscaper, scope: codegen.Scope) -> codegen.PythonAst:
         if escaper.name == null_escaper.name:
             return codegen.StringJoin.build(parts)
 

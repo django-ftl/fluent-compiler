@@ -15,7 +15,7 @@ TERM_SIGIL = "-"
 ATTRIBUTE_SEPARATOR = "."
 
 if TYPE_CHECKING:
-    from .codegen import FunctionCall, String, VariableReference2
+    from . import codegen
 
 
 class AnyArgType:
@@ -107,8 +107,8 @@ def inspect_function_args(function: Callable, name: str, errors: list[Any]) -> F
 
 def args_match(
     function_name: str,
-    args: list[VariableReference2 | Any | FunctionCall | String],
-    kwargs: dict[str, FunctionCall | String],
+    args: list[codegen.PythonAst],
+    kwargs: dict[str, codegen.PythonAst],
     arg_spec: FunctionArgSpec,
 ) -> Any:
     """

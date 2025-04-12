@@ -6,17 +6,14 @@ import builtins
 import contextlib
 import dataclasses
 import decimal
-from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Callable, Sequence, Tuple, Union
+from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple, TypeGuard, Union
 
 import babel
 import babel.plural
 from fluent.syntax import FluentParser
-from fluent.syntax import ast as fltast
-
-from fluent_compiler.resource import FtlResource
+from fluent.syntax import ast as fl_ast
 
 from . import ast_compat as ast
 from . import codegen, runtime
@@ -38,6 +35,7 @@ from .escapers import (
     identity,
     null_escaper,
 )
+from .resource import FtlResource
 from .types import FluentDateType, FluentNone, FluentNumber, FluentType
 from .utils import (
     ATTRIBUTE_SEPARATOR,
@@ -83,6 +81,7 @@ PROPERTY_EXTERNAL_ARG = "PROPERTY_EXTERNAL_ARG"
 
 @dataclass
 class CurrentEnvironment:
+    # TODO make fields not optional, and the whole of `CurrentEnvironment` optional instead
     # The parts of CompilerEnvironment that we want to mutate (and restore)
     # temporarily for some parts of a call chain.
     message_id: str | None = None
@@ -92,7 +91,9 @@ class CurrentEnvironment:
     escaper: Escaper = field(default_factory=lambda: null_escaper)
 
 
-PluralFormFunc: TypeAlias = Callable[[Union[float, decimal.Decimal]], str]
+NumberType: TypeAlias = Union[float, decimal.Decimal]
+
+PluralFormFunc: TypeAlias = Callable[[NumberType], Union[str, None]]
 
 MessageFunc: TypeAlias = Callable[[Union[dict, None], list], str]
 
@@ -107,17 +108,17 @@ class CompilerEnvironment:
     message_mapping: dict[str, str] = field(default_factory=dict)
     errors: list[CompilationErrorItem] = field(default_factory=list)
     escapers: Sequence[RegisteredEscaper] | None = None
-    functions: dict[str, Callable] = field(default_factory=dict)
+    functions: Mapping[str, Callable] = field(default_factory=dict)
     function_renames: dict[str, str] = field(default_factory=dict)
     functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
-    message_ids_to_ast: dict[str, fltast.Message] = field(default_factory=dict)
-    term_ids_to_ast: dict[str, fltast.Term] = field(default_factory=dict)
+    message_ids_to_ast: dict[str, fl_ast.Message | fl_ast.Attribute] = field(default_factory=dict)
+    term_ids_to_ast: dict[str, fl_ast.Term | fl_ast.Attribute] = field(default_factory=dict)
     current: CurrentEnvironment = field(default_factory=CurrentEnvironment)
 
-    def add_current_message_error(self, error):
+    def add_current_message_error(self, error: Exception):
         self.errors.append((self.current.message_id, error))
 
-    def escaper_for_message(self, message_id: str | None = None):
+    def escaper_for_message(self, message_id: str | None = None) -> Escaper | RegisteredEscaper:
         return escaper_for_message(self.escapers, message_id=message_id)
 
     @contextlib.contextmanager
@@ -133,10 +134,13 @@ class CompilerEnvironment:
         yield self
         self.current = old_current
 
-    def modified_for_term_reference(self, term_args=None):
+    def modified_for_term_reference(
+        self,
+        term_args: dict[str, codegen.PythonAst] | None = None,
+    ) -> contextlib._GeneratorContextManager:
         return self.modified(term_args=term_args if term_args is not None else {})
 
-    def should_use_isolating(self):
+    def should_use_isolating(self) -> bool:
         if self.current.escaper.use_isolating is None:
             return self.use_isolating
         return self.current.escaper.use_isolating
@@ -147,7 +151,7 @@ class FtlSource:
     Object used to specify the origin of a chunk of FTL
     """
 
-    def __init__(self, ast_node, ftl_resource):
+    def __init__(self, ast_node: fl_ast.Attribute | fl_ast.Message, ftl_resource: FtlResource):
         self.ast_node = ast_node
         self.ftl_resource = ftl_resource
         self.filename = self.ftl_resource.filename
@@ -168,10 +172,16 @@ class CompiledFtl:
     # Compiled output as Python AST.
     module_ast: ast.Module | None = None
 
-    locale: babel.Locale | None = None
+    locale: str | None = None
 
 
-def compile_messages(locale, resources, use_isolating=True, functions=None, escapers=None):
+def compile_messages(
+    locale: str,
+    resources: list[FtlResource],
+    use_isolating: bool = True,
+    functions: dict[str, Callable] | None = None,
+    escapers: list[Escaper] | None = None,
+) -> CompiledFtl:
     """
     Compile a list of FtlResource to a Python module,
     and returns a CompiledFtl objects
@@ -219,14 +229,16 @@ def compile_messages(locale, resources, use_isolating=True, functions=None, esca
     )
 
 
-def _parse_resources(ftl_resources):
+def _parse_resources(
+    ftl_resources: Sequence[FtlResource],
+) -> tuple[Mapping[str, TermOrMessage], list[CompilationErrorItem]]:
     parsing_issues = []
-    output_dict = OrderedDict()
+    output_dict = dict()
     for ftl_resource in ftl_resources:
         parser = FluentParser()
         resource = parser.parse(ftl_resource.text)
         for item in resource.body:
-            if isinstance(item, (fltast.Message, fltast.Term)):
+            if isinstance(item, (fl_ast.Message, fl_ast.Term)):
                 full_id = ast_to_id(item)
                 if full_id in output_dict:
                     parsing_issues.append(
@@ -241,7 +253,7 @@ def _parse_resources(ftl_resources):
                     for attribute in item.attributes:
                         attribute.ftl_resource = ftl_resource
                     output_dict[full_id] = item
-            elif isinstance(item, fltast.Junk):
+            elif isinstance(item, fl_ast.Junk):
                 parsing_issues.append(
                     (
                         None,
@@ -264,11 +276,14 @@ def _parse_resources(ftl_resources):
     return output_dict, parsing_issues
 
 
+TermOrMessage: TypeAlias = Union[fl_ast.Message, fl_ast.Term]
+
+
 def messages_to_module(
-    messages: dict[str, fltast.Message | fltast.Term],
+    messages: Mapping[str, TermOrMessage],
     locale: babel.Locale,
     use_isolating: bool = True,
-    functions: dict[str, Callable] | None = None,
+    functions: Mapping[str, Callable] | None = None,
     escapers: Sequence[Escaper] | None = None,
 ) -> tuple:
     """
@@ -279,13 +294,13 @@ def messages_to_module(
     if functions is None:
         functions = {}
 
-    message_ids_to_ast = OrderedDict(get_message_function_ast(messages))
-    term_ids_to_ast = OrderedDict(get_term_ast(messages))
+    message_ids_to_ast = dict(get_message_function_ast(messages))
+    term_ids_to_ast = dict(get_term_ast(messages))
 
     # Plural form function
     plural_form_for_number_main = babel.plural.to_python(locale.plural_form)
 
-    def plural_form_for_number(number):
+    def plural_form_for_number(number: NumberType) -> str | None:
         try:
             return plural_form_for_number_main(number)
         except TypeError:
@@ -389,9 +404,11 @@ def messages_to_module(
     return (module, compiler_env.message_mapping, module_globals, compiler_env.errors)
 
 
-def get_message_function_ast(message_dict):
+def get_message_function_ast(
+    message_dict: Mapping[str, TermOrMessage]
+) -> Iterable[tuple[str, fl_ast.Attribute | fl_ast.Message]]:
     for msg_id, msg in message_dict.items():
-        if isinstance(msg, fltast.Term):
+        if isinstance(msg, fl_ast.Term):
             continue
         if msg.value is not None:  # has a body
             yield (msg_id, msg)
@@ -399,10 +416,10 @@ def get_message_function_ast(message_dict):
             yield (attribute_ast_to_id(attribute, msg), attribute)
 
 
-def get_term_ast(message_dict):
+def get_term_ast(message_dict: Mapping[str, TermOrMessage]) -> Iterable[tuple[str, fl_ast.Attribute | fl_ast.Term]]:
     for term_id, term in message_dict.items():
-        if isinstance(term, fltast.Message):
-            pass
+        if isinstance(term, fl_ast.Message):
+            continue
         if term.value is not None:  # has a body
             yield (term_id, term)
 
@@ -410,7 +427,7 @@ def get_term_ast(message_dict):
             yield (attribute_ast_to_id(attribute, term), attribute)
 
 
-def suggested_function_name_for_msg_id(msg_id):
+def suggested_function_name_for_msg_id(msg_id: str) -> str:
     # Scope.reserve_name does further sanitising of name, which we don't need to
     # worry about. It also ensures we don't get dupes. So the fact that this
     # method will produce occasional collisions is not an issue - here we are
@@ -420,7 +437,13 @@ def suggested_function_name_for_msg_id(msg_id):
     return msg_id.replace(ATTRIBUTE_SEPARATOR, "__").replace("-", "_")
 
 
-def compile_message(msg, msg_id, function_name, module, compiler_env):
+def compile_message(
+    msg: fl_ast.Attribute | fl_ast.Message,
+    msg_id: str,
+    function_name: str,
+    module: codegen.Module,
+    compiler_env: CompilerEnvironment,
+) -> codegen.PythonAst:
     msg_func = codegen.Function(
         parent_scope=module.scope,
         name=function_name,
@@ -442,7 +465,11 @@ def compile_message(msg, msg_id, function_name, module, compiler_env):
     return msg_func
 
 
-def traverse_ast(node, func, exclude_attributes=None):
+def traverse_ast(
+    node: fl_ast.BaseNode,
+    func: Callable[[object], None],
+    exclude_attributes: list[tuple[type[TermOrMessage], str]] | None = None,
+) -> None:
     """
     Postorder-traverse this node and apply `func` to all child nodes.
 
@@ -452,7 +479,7 @@ def traverse_ast(node, func, exclude_attributes=None):
 
     def visit(value):
         """Call `func` on `value` and its descendants."""
-        if isinstance(value, fltast.BaseNode):
+        if isinstance(value, fl_ast.BaseNode):
             return traverse_ast(value, func, exclude_attributes=exclude_attributes)
         if isinstance(value, list):
             return func(list(map(visit, value)))
@@ -468,7 +495,7 @@ def traverse_ast(node, func, exclude_attributes=None):
     return func(node)
 
 
-def contains_reference_cycle(msg, compiler_env):
+def contains_reference_cycle(msg: fl_ast.Attribute | fl_ast.Message, compiler_env: CompilerEnvironment) -> bool:
     """
     Returns True if the message 'msg' contains a cyclic reference,
     in the context of the other messages provided in compiler_env
@@ -505,11 +532,11 @@ def contains_reference_cycle(msg, compiler_env):
     # references.
     exclude_attributes = [
         # Message and Term attributes have already been loaded into the message_ids_to_ast dict,
-        (fltast.Message, "attributes"),
-        (fltast.Term, "attributes"),
+        (fl_ast.Message, "attributes"),
+        (fl_ast.Term, "attributes"),
         # for speed
-        (fltast.Message, "comment"),
-        (fltast.Term, "comment"),
+        (fl_ast.Message, "comment"),
+        (fl_ast.Term, "comment"),
     ]
 
     # We need to keep track of visited nodes. If we use just a single set for
@@ -528,7 +555,7 @@ def contains_reference_cycle(msg, compiler_env):
     checks = []
 
     def checker(node):
-        if isinstance(node, fltast.BaseNode):
+        if isinstance(node, fl_ast.BaseNode):
             node_id = id(node)
             if node_id in visited_node_stack[-1]:
                 checks.append(True)
@@ -541,7 +568,7 @@ def contains_reference_cycle(msg, compiler_env):
         # different nodes (messages via a runtime function call, terms via
         # inlining), including the fallback strategies that are used.
         sub_node = None
-        if isinstance(node, (fltast.MessageReference, fltast.TermReference)):
+        if isinstance(node, (fl_ast.MessageReference, fl_ast.TermReference)):
             ref_id = reference_to_id(node)
             if ref_id in message_ids_to_ast:
                 sub_node = message_ids_to_ast[ref_id]
@@ -663,7 +690,9 @@ def contains_reference_cycle(msg, compiler_env):
 
 
 @singledispatch
-def compile_expr(element: fltast.BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment):
+def compile_expr(
+    element: fl_ast.BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     """
     Compiles a Fluent expression into a Python one, return
     an object of type codegen.Expression.
@@ -675,30 +704,36 @@ def compile_expr(element: fltast.BaseNode, block: codegen.Block, compiler_env: C
     raise NotImplementedError(f"Cannot handle object of type {type(element).__name__}")
 
 
-@compile_expr.register(fltast.Message)
-def compile_expr_message(message, block, compiler_env):
+@compile_expr.register(fl_ast.Message)
+def compile_expr_message(
+    message: fl_ast.Message, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     return compile_expr(message.value, block, compiler_env)
 
 
-@compile_expr.register(fltast.Term)
+@compile_expr.register(fl_ast.Term)
 def compile_expr_term(term, block, compiler_env):
     return compile_expr(term.value, block, compiler_env)
 
 
-@compile_expr.register(fltast.Attribute)
-def compile_expr_attribute(attribute, block, compiler_env):
+@compile_expr.register(fl_ast.Attribute)
+def compile_expr_attribute(
+    attribute: fl_ast.Attribute, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     return compile_expr(attribute.value, block, compiler_env)
 
 
-@compile_expr.register(fltast.Pattern)
-def compile_expr_pattern(pattern, block, compiler_env):
+@compile_expr.register(fl_ast.Pattern)
+def compile_expr_pattern(
+    pattern: fl_ast.Pattern, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     parts = []
     subelements = pattern.elements
 
     use_isolating = compiler_env.should_use_isolating() and len(subelements) > 1
 
     for element in pattern.elements:
-        wrap_this_with_isolating = use_isolating and not isinstance(element, fltast.TextElement)
+        wrap_this_with_isolating = use_isolating and not isinstance(element, fl_ast.TextElement)
         if wrap_this_with_isolating:
             parts.append(wrap_with_escaper(codegen.String(FSI), block, compiler_env))
         parts.append(compile_expr(element, block, compiler_env))
@@ -713,36 +748,53 @@ def compile_expr_pattern(pattern, block, compiler_env):
     )
 
 
-@compile_expr.register(fltast.TextElement)
-def compile_expr_text(text, block, compiler_env):
+@compile_expr.register(fl_ast.TextElement)
+def compile_expr_text(
+    text: fl_ast.TextElement, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     return wrap_with_mark_escaped(codegen.String(text.value), block, compiler_env)
 
 
-@compile_expr.register(fltast.StringLiteral)
-def compile_expr_string_expression(expr, block, compiler_env):
+@compile_expr.register(fl_ast.StringLiteral)
+def compile_expr_string_expression(
+    expr: fl_ast.StringLiteral, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     return codegen.String(expr.parse()["value"])
 
 
-@compile_expr.register(fltast.NumberLiteral)
-def compile_expr_number_expression(expr, block, compiler_env):
+@compile_expr.register(fl_ast.NumberLiteral)
+def compile_expr_number_expression(
+    expr: fl_ast.NumberLiteral, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.FunctionCall:
     number_expr = codegen.Number(numeric_to_native(expr.value))
     # > NUMBER($number_expr)
     return codegen.FunctionCall(BUILTIN_NUMBER, [number_expr], {}, block.scope)
 
 
-@compile_expr.register(fltast.Placeable)
-def compile_expr_placeable(placeable, block, compiler_env):
+@compile_expr.register(fl_ast.Placeable)
+def compile_expr_placeable(
+    placeable: fl_ast.Placeable, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     return compile_expr(placeable.expression, block, compiler_env)
 
 
-@compile_expr.register(fltast.MessageReference)
-def compile_expr_message_reference(reference, block, compiler_env):
+@compile_expr.register(fl_ast.MessageReference)
+def compile_expr_message_reference(
+    reference: fl_ast.MessageReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.FunctionCall:
     return handle_message_reference(reference, block, compiler_env)
 
 
-def compile_term(term, block, compiler_env, new_escaper, term_args=None):
+def compile_term(
+    term: fl_ast.Term | fl_ast.Attribute,
+    block: codegen.Block,
+    compiler_env: CompilerEnvironment,
+    new_escaper: Escaper | RegisteredEscaper,
+    term_args: dict[str, codegen.PythonAst] | None = None,
+) -> codegen.PythonAst:
     current_escaper = compiler_env.current.escaper
     if not escapers_compatible(current_escaper, new_escaper):
+        # TODO bug here when attribute is passed
         term_id = ast_to_id(term)
         error = TypeError(
             f"Escaper {new_escaper.name} for term {term_id} cannot be used from calling context with {current_escaper.name} escaper"
@@ -756,10 +808,13 @@ def compile_term(term, block, compiler_env, new_escaper, term_args=None):
                 return compile_expr(term.value, block, compiler_env)
 
 
-@compile_expr.register(fltast.TermReference)
-def compile_expr_term_reference(reference, block, compiler_env):
+@compile_expr.register(fl_ast.TermReference)
+def compile_expr_term_reference(
+    reference: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     term, new_escaper, err_obj = lookup_term_reference(reference, block, compiler_env)
     if term is None:
+        assert err_obj is not None
         return err_obj
     if reference.arguments:
         args = [compile_expr(arg, block, compiler_env) for arg in reference.arguments.positional]
@@ -779,8 +834,10 @@ def compile_expr_term_reference(reference, block, compiler_env):
     return compile_term(term, block, compiler_env, new_escaper, term_args=kwargs)
 
 
-@compile_expr.register(fltast.SelectExpression)
-def compile_expr_select_expression(select_expr, block, compiler_env):
+@compile_expr.register(fl_ast.SelectExpression)
+def compile_expr_select_expression(
+    select_expr: fl_ast.SelectExpression, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     with compiler_env.modified(in_select_expression=True):
         key_value = compile_expr(select_expr.selector, block, compiler_env)
     static_retval = resolve_select_expression_statically(select_expr, key_value, block, compiler_env)
@@ -851,14 +908,18 @@ def compile_expr_select_expression(select_expr, block, compiler_env):
     return block.scope.variable(return_tmp_name)
 
 
-@compile_expr.register(fltast.Identifier)
-def compile_expr_variant_name(name, block, compiler_env):
+@compile_expr.register(fl_ast.Identifier)
+def compile_expr_variant_name(
+    name: fl_ast.Identifier, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.String:
     # TODO - handle numeric literals here?
     return codegen.String(name.name)
 
 
-@compile_expr.register(fltast.VariableReference)
-def compile_expr_variable_reference(argument, block, compiler_env):
+@compile_expr.register(fl_ast.VariableReference)
+def compile_expr_variable_reference(
+    argument: fl_ast.VariableReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     name = argument.id.name
     if compiler_env.current.term_args is not None:
         # We are in a term, all args are passed explicitly, not inherited from
@@ -964,8 +1025,10 @@ def compile_expr_variable_reference(argument, block, compiler_env):
     return block.scope.variable(arg_handled_tmp_name)
 
 
-@compile_expr.register(fltast.FunctionReference)
-def compile_expr_function_reference(expr, block, compiler_env):
+@compile_expr.register(fl_ast.FunctionReference)
+def compile_expr_function_reference(
+    expr: fl_ast.FunctionReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     args = [compile_expr(arg, block, compiler_env) for arg in expr.arguments.positional]
     kwargs = {kwarg.name.name: compile_expr(kwarg.value, block, compiler_env) for kwarg in expr.arguments.named}
 
@@ -1008,11 +1071,11 @@ def compile_expr_function_reference(expr, block, compiler_env):
 # Compiler utilities and common code:
 
 
-def add_msg_error_with_expr(block, exception_expr):
+def add_msg_error_with_expr(block: codegen.Block, exception_expr: codegen.PythonAst):
     block.add_statement(codegen.MethodCall(block.scope.variable(ERRORS_NAME), "append", [exception_expr]))
 
 
-def add_static_msg_error(block, exception):
+def add_static_msg_error(block: codegen.Block, exception: Exception) -> None:
     """
     Given a block and an exception object, inspect the object and add the code
     to the scope needed to create and add that exception to the returned errors
@@ -1030,7 +1093,7 @@ def add_static_msg_error(block, exception):
     )
 
 
-def do_message_call(msg_id, block, compiler_env):
+def do_message_call(msg_id: str, block: codegen.Block, compiler_env: CompilerEnvironment) -> codegen.PythonAst:
     current_escaper = compiler_env.current.escaper
     new_escaper = compiler_env.escaper_for_message(msg_id)
     if not escapers_compatible(current_escaper, new_escaper):
@@ -1056,7 +1119,11 @@ def do_message_call(msg_id, block, compiler_env):
     return wrap_with_escaper(func_call, block, compiler_env)
 
 
-def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
+def finalize_expr_as_output_type(
+    codegen_ast: codegen.Expression,
+    block: codegen.Block,
+    compiler_env: CompilerEnvironment,
+) -> codegen.Expression:
     """
     Wrap an outputted Python expression with code to ensure that it will return
     a string (or the correct output type for the escaper)
@@ -1108,29 +1175,31 @@ def finalize_expr_as_output_type(codegen_ast, block, compiler_env):
     )
 
 
-def is_cldr_plural_form_key(key_expr):
-    return isinstance(key_expr, fltast.Identifier) and key_expr.name in CLDR_PLURAL_FORMS
+def is_cldr_plural_form_key(key_expr: fl_ast.BaseNode) -> bool:
+    return isinstance(key_expr, fl_ast.Identifier) and key_expr.name in CLDR_PLURAL_FORMS
 
 
 def is_NUMBER_call_expr(expr):
     """
     Returns True if the object is a FTL ast.FunctionReference representing a call to NUMBER
     """
-    return isinstance(expr, fltast.FunctionReference) and expr.id.name == "NUMBER"
+    return isinstance(expr, fl_ast.FunctionReference) and expr.id.name == "NUMBER"
 
 
-def lookup_term_reference(ref, block, compiler_env):
+def lookup_term_reference(
+    ref: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | Escaper, None] | tuple[None, None, codegen.PythonAst]:
     # This could be turned into 'handle_term_reference', (similar to
     # 'handle_message_reference' below) once VariantList and VariantExpression
     # go away.
     term_id = reference_to_id(ref)
     if term_id in compiler_env.term_ids_to_ast:
+        term_ast = compiler_env.term_ids_to_ast[term_id]
         return (
-            compiler_env.term_ids_to_ast[term_id],
+            term_ast,
             compiler_env.escaper_for_message(term_id),
             None,
         )
-        return compiler_env.term_ids_to_ast[term_id], None
     # Fallback to parent
     if ref.attribute:
         parent_id = reference_to_id(ref, ignore_attributes=True)
@@ -1146,7 +1215,9 @@ def lookup_term_reference(ref, block, compiler_env):
     return None, None, unknown_reference(term_id, block, ref, compiler_env)
 
 
-def handle_message_reference(ref, block, compiler_env):
+def handle_message_reference(
+    ref: fl_ast.MessageReference, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.PythonAst:
     msg_id = reference_to_id(ref)
     if msg_id in compiler_env.message_ids_to_ast:
         return do_message_call(msg_id, block, compiler_env)
@@ -1161,14 +1232,14 @@ def handle_message_reference(ref, block, compiler_env):
     return unknown_reference(msg_id, block, ref, compiler_env)
 
 
-def make_fluent_none(name, scope):
+def make_fluent_none(name: str | None, scope: codegen.Scope) -> codegen.PythonAst:
     # > FluentNone(name)
     # OR
     # > FluentNone()
     return codegen.ObjectCreation("FluentNone", [codegen.String(name)] if name else [], {}, scope)
 
 
-def numeric_to_native(val):
+def numeric_to_native(val: str) -> float | int:
     """
     Given a numeric string (as defined by fluent spec),
     return an int or float
@@ -1180,14 +1251,14 @@ def numeric_to_native(val):
     return int(val)
 
 
-def reserve_and_assign_name(block, suggested_name, value):
+def reserve_and_assign_name(block: codegen.Block, suggested_name: str, value: codegen.PythonAst) -> str:
     """
     Reserves a name for the value in the scope block and adds assignment if
     necessary, returning the name reserved.
 
     May skip the assignment if not necessary.
     """
-    if isinstance(value, codegen.VariableReference2):
+    if isinstance(value, codegen.VariableReference):
         # We don't need a new name, we can re-use this one.
         return value.name
 
@@ -1196,7 +1267,12 @@ def reserve_and_assign_name(block, suggested_name, value):
     return name
 
 
-def resolve_select_expression_statically(select_expr, key_ast, block, compiler_env):
+def resolve_select_expression_statically(
+    select_expr: fl_ast.SelectExpression,
+    key_ast: codegen.PythonAst,
+    block: codegen.Block,
+    compiler_env: CompilerEnvironment,
+) -> codegen.PythonAst | None:
     """
     Resolve a select expression statically, given a codegen.PythonAst object
     `key_ast` representing the key value, or return None if not possible.
@@ -1225,17 +1301,17 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
                 found = variant
                 break
         if key_is_string:
-            if isinstance(variant.key, fltast.Identifier) and key_ast.string_value == variant.key.name:
+            if isinstance(variant.key, fl_ast.Identifier) and key_ast.string_value == variant.key.name:
                 found = variant
                 break
         elif key_is_number:
-            if isinstance(variant.key, fltast.NumberLiteral) and key_number_value == numeric_to_native(
+            if isinstance(variant.key, fl_ast.NumberLiteral) and key_number_value == numeric_to_native(
                 variant.key.value
             ):
                 found = variant
                 break
             elif (
-                isinstance(variant.key, fltast.Identifier)
+                isinstance(variant.key, fl_ast.Identifier)
                 and compiler_env.plural_form_function(key_number_value) == variant.key.name
             ):
                 found = variant
@@ -1246,19 +1322,26 @@ def resolve_select_expression_statically(select_expr, key_ast, block, compiler_e
     return compile_expr(found.value, block, compiler_env)
 
 
-def unknown_reference(name, block, ast_node, compiler_env):
+def unknown_reference(
+    name: str,
+    block: codegen.Block,
+    ast_node: fl_ast.MessageReference | fl_ast.TermReference,
+    compiler_env: CompilerEnvironment,
+) -> codegen.PythonAst:
     error = unknown_reference_error_obj(name, ast_node, compiler_env)
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
     return make_fluent_none(name, block.scope)
 
 
-def display_ast_location(ast_node, compiler_env):
+def display_ast_location(ast_node: fl_ast.SyntaxNode, compiler_env: CompilerEnvironment) -> str:
     ftl_resource = compiler_env.current.ftl_resource
     return display_location(ftl_resource.filename, span_to_position(ast_node.span, ftl_resource.text))
 
 
-def unknown_reference_error_obj(ref_id, source_ast_node, compiler_env):
+def unknown_reference_error_obj(
+    ref_id: str, source_ast_node: fl_ast.MessageReference | fl_ast.TermReference, compiler_env: CompilerEnvironment
+) -> FluentReferenceError:
     location = display_ast_location(source_ast_node, compiler_env)
     if ATTRIBUTE_SEPARATOR in ref_id:
         return FluentReferenceError(f"{location}: Unknown attribute: {ref_id}")
@@ -1267,7 +1350,9 @@ def unknown_reference_error_obj(ref_id, source_ast_node, compiler_env):
     return FluentReferenceError(f"{location}: Unknown message: {ref_id}")
 
 
-def wrap_with_escaper(codegen_ast, block, compiler_env):
+def wrap_with_escaper(
+    codegen_ast: codegen.Expression, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.Expression:
     escaper = compiler_env.current.escaper
     if escaper is null_escaper or escaper.escape is identity:
         return codegen_ast
@@ -1276,7 +1361,9 @@ def wrap_with_escaper(codegen_ast, block, compiler_env):
     return codegen.FunctionCall(escaper.escape_name(), [codegen_ast], {}, block.scope)
 
 
-def wrap_with_mark_escaped(codegen_ast, block, compiler_env):
+def wrap_with_mark_escaped(
+    codegen_ast: codegen.Expression, block: codegen.Block, compiler_env: CompilerEnvironment
+) -> codegen.Expression:
     escaper = compiler_env.current.escaper
     if escaper is null_escaper or escaper.mark_escaped is identity:
         return codegen_ast
@@ -1288,11 +1375,11 @@ def wrap_with_mark_escaped(codegen_ast, block, compiler_env):
 # AST checking and simplification
 
 
-def is_DATETIME_function_call(codegen_ast):
+def is_DATETIME_function_call(codegen_ast: Any) -> TypeGuard[codegen.FunctionCall]:
     return isinstance(codegen_ast, codegen.FunctionCall) and codegen_ast.function_name == BUILTIN_DATETIME
 
 
-def is_fluent_none(codegen_ast):
+def is_fluent_none(codegen_ast: codegen.Expression) -> TypeGuard[codegen.ObjectCreation]:
     return (
         isinstance(codegen_ast, codegen.ObjectCreation)
         and codegen_ast.function_name == "FluentNone"
@@ -1300,15 +1387,15 @@ def is_fluent_none(codegen_ast):
     )
 
 
-def is_NUMBER_function_call(codegen_ast):
+def is_NUMBER_function_call(codegen_ast: Any) -> TypeGuard[codegen.FunctionCall]:
     return isinstance(codegen_ast, codegen.FunctionCall) and codegen_ast.function_name == BUILTIN_NUMBER
 
 
 class Simplifier:
-    def __init__(self, compiler_env):
+    def __init__(self, compiler_env: CompilerEnvironment):
         self.compiler_env = compiler_env
 
-    def __call__(self, codegen_ast, changes):
+    def __call__(self, codegen_ast: Any, changes: list[Any | bool]) -> Any:
         # Simplifications we can do on the AST tree. We append to
         # changes if we made a change, and either mutate codegen_ast or
         # return a new/different object.
@@ -1372,7 +1459,7 @@ class Simplifier:
             isinstance(codegen_ast, codegen.MethodCall)
             and is_fluent_none(codegen_ast.obj)
             and codegen_ast.method_name == "format"
-            and isinstance(codegen_ast.args[0], codegen.VariableReference2)
+            and isinstance(codegen_ast.args[0], codegen.VariableReference)
             and codegen_ast.args[0].name == LOCALE_NAME
         ):
             make_fluent_none_call = codegen_ast.obj

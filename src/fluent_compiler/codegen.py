@@ -242,7 +242,7 @@ class Scope:
 
     def variable(self, name):
         # Convenience utility for returning a VariableReference
-        return VariableReference2(name, self)
+        return VariableReference(name, self)
 
 
 _IDENTIFIER_SANITIZER_RE = re.compile("[^a-zA-Z0-9_]")
@@ -693,7 +693,7 @@ else:
     StringJoin = ConcatJoin
 
 
-class VariableReference2(Expression):
+class VariableReference(Expression):
     child_elements = []
 
     def __init__(self, name, scope):

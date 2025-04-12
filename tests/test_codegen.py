@@ -150,27 +150,27 @@ class TestCodeGen(unittest.TestCase):
     def test_variable_reference(self):
         scope = codegen.Scope()
         name = scope.reserve_name("name")
-        ref = codegen.VariableReference2(name, scope)
+        ref = codegen.VariableReference(name, scope)
         self.assertEqual(as_source_code(ref), "name")
 
     def test_variable_reference_check(self):
         scope = codegen.Scope()
-        self.assertRaises(AssertionError, codegen.VariableReference2, "name", scope)
+        self.assertRaises(AssertionError, codegen.VariableReference, "name", scope)
 
     def test_variable_reference_function_arg_check(self):
         scope = codegen.Scope()
         func_name = scope.reserve_name("myfunc")
         func = codegen.Function(func_name, args=["my_arg"], parent_scope=scope)
         # Can't use undefined 'some_name'
-        self.assertRaises(AssertionError, codegen.VariableReference2, "some_name", func)
+        self.assertRaises(AssertionError, codegen.VariableReference, "some_name", func)
         # But can use function argument 'my_arg'
-        ref = codegen.VariableReference2("my_arg", func)
+        ref = codegen.VariableReference("my_arg", func)
         self.assertCodeEqual(as_source_code(ref), "my_arg")
 
     def test_variable_reference_bad(self):
         module = codegen.Module()
         name = module.scope.reserve_name("name")
-        ref = codegen.VariableReference2(name, module.scope)
+        ref = codegen.VariableReference(name, module.scope)
         ref.name = "bad name"
         self.assertRaises(AssertionError, as_source_code, ref)
 
@@ -179,7 +179,7 @@ class TestCodeGen(unittest.TestCase):
         # manually, we use that from now on.
         scope = codegen.Scope()
         name = scope.reserve_name("name")
-        ref1 = codegen.VariableReference2(name, scope)
+        ref1 = codegen.VariableReference(name, scope)
         ref2 = scope.variable(name)
         self.assertEqual(ref1, ref2)
 
