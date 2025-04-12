@@ -8,12 +8,13 @@ import dataclasses
 import decimal
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Any, Callable, ContextManager, Generator, Iterable, Mapping, Sequence, Tuple, TypeGuard, Union
+from typing import Any, Callable, ContextManager, Generator, Iterable, Mapping, Sequence, Tuple, Union
 
 import babel
 import babel.plural
 from fluent.syntax import FluentParser
 from fluent.syntax import ast as fl_ast
+from typing_extensions import TypeGuard
 
 from . import ast_compat as ast
 from . import codegen, runtime
@@ -820,10 +821,10 @@ def compile_term(
 def compile_expr_term_reference(
     reference: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
 ) -> codegen.PythonAst:
-    term, new_escaper, err_obj = lookup_term_reference(reference, block, compiler_env)
-    if term is None:
-        assert err_obj is not None
-        return err_obj
+    looked_up = lookup_term_reference(reference, block, compiler_env)
+    if isinstance(looked_up, codegen.PythonAst):
+        return looked_up
+    term, new_escaper = looked_up
     if reference.arguments:
         args = [compile_expr(arg, block, compiler_env) for arg in reference.arguments.positional]
         kwargs = {
@@ -1196,7 +1197,12 @@ def is_NUMBER_call_expr(expr):
 
 def lookup_term_reference(
     ref: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | Escaper, None] | tuple[None, None, codegen.PythonAst]:
+) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | Escaper] | codegen.PythonAst:
+    """
+    Looks up term reference, and returns either:
+    - a tuple containing Term/Attribute and the escaper needed,
+    - OR a PythonAst object representing an error if not found.
+    """
     # This could be turned into 'handle_term_reference', (similar to
     # 'handle_message_reference' below) once VariantList and VariantExpression
     # go away.
@@ -1206,7 +1212,6 @@ def lookup_term_reference(
         return (
             term_ast,
             compiler_env.escaper_for_message(term_id),
-            None,
         )
     # Fallback to parent
     if ref.attribute:
@@ -1218,9 +1223,8 @@ def lookup_term_reference(
             return (
                 compiler_env.term_ids_to_ast[parent_id],
                 compiler_env.escaper_for_message(parent_id),
-                None,
             )
-    return None, None, unknown_reference(term_id, block, ref, compiler_env)
+    return unknown_reference(term_id, block, ref, compiler_env)
 
 
 def handle_message_reference(
@@ -1277,7 +1281,7 @@ def reserve_and_assign_name(block: codegen.Block, suggested_name: str, value: co
 
 def resolve_select_expression_statically(
     select_expr: fl_ast.SelectExpression,
-    key_ast: codegen.PythonAst,
+    key_ast: codegen.Expression,
     block: codegen.Block,
     compiler_env: CompilerEnvironment,
 ) -> codegen.PythonAst | None:
