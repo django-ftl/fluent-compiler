@@ -8,7 +8,7 @@ import dataclasses
 import decimal
 from dataclasses import dataclass, field
 from functools import singledispatch
-from typing import Any, Callable, Iterable, Mapping, Sequence, Tuple, TypeGuard, Union
+from typing import Any, Callable, ContextManager, Generator, Iterable, Mapping, Sequence, Tuple, TypeGuard, Union
 
 import babel
 import babel.plural
@@ -84,8 +84,8 @@ class CurrentEnvironment:
     # TODO make fields not optional, and the whole of `CurrentEnvironment` optional instead
     # The parts of CompilerEnvironment that we want to mutate (and restore)
     # temporarily for some parts of a call chain.
-    message_id: str | None = None
-    ftl_resource: FtlResource | None = None
+    message_id: str
+    ftl_resource: FtlResource
     term_args: dict | None = None
     in_select_expression: bool = False
     escaper: Escaper = field(default_factory=lambda: null_escaper)
@@ -105,6 +105,7 @@ class CompilerEnvironment:
     locale: babel.Locale
     plural_form_function: PluralFormFunc
     use_isolating: bool
+    current: CurrentEnvironment
     message_mapping: dict[str, str] = field(default_factory=dict)
     errors: list[CompilationErrorItem] = field(default_factory=list)
     escapers: Sequence[RegisteredEscaper] | None = None
@@ -113,16 +114,16 @@ class CompilerEnvironment:
     functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
     message_ids_to_ast: dict[str, fl_ast.Message | fl_ast.Attribute] = field(default_factory=dict)
     term_ids_to_ast: dict[str, fl_ast.Term | fl_ast.Attribute] = field(default_factory=dict)
-    current: CurrentEnvironment = field(default_factory=CurrentEnvironment)
 
     def add_current_message_error(self, error: Exception):
-        self.errors.append((self.current.message_id, error))
+        message_id = self.current.message_id if self.current else None
+        self.errors.append((message_id, error))
 
     def escaper_for_message(self, message_id: str | None = None) -> Escaper | RegisteredEscaper:
         return escaper_for_message(self.escapers, message_id=message_id)
 
     @contextlib.contextmanager
-    def modified(self, **replacements):
+    def modified(self, **replacements) -> Generator[CompilerEnvironment, None, None]:
         """
         Context manager that modifies the 'current' attribute of the
         environment, restoring the old data at the end.
@@ -130,14 +131,17 @@ class CompilerEnvironment:
         # CurrentEnvironment only has immutable args at the moment, so the
         # shallow copy returned by dataclasses.replace is fine.
         old_current = self.current
-        self.current = dataclasses.replace(old_current, **replacements)
+        if old_current is None:
+            self.current = CurrentEnvironment(**replacements)
+        else:
+            self.current = dataclasses.replace(old_current, **replacements)
         yield self
         self.current = old_current
 
     def modified_for_term_reference(
         self,
         term_args: dict[str, codegen.PythonAst] | None = None,
-    ) -> contextlib._GeneratorContextManager:
+    ) -> ContextManager[CompilerEnvironment]:
         return self.modified(term_args=term_args if term_args is not None else {})
 
     def should_use_isolating(self) -> bool:
@@ -309,6 +313,8 @@ def messages_to_module(
             return None
 
     function_arg_errors = []
+    # TODO - to avoid issues with incomplete CompilerEnvironment/CurrentEnvironment,
+    # maybe don't create this object until we can set it up fully
     compiler_env = CompilerEnvironment(
         locale=locale,
         plural_form_function=plural_form_for_number,
@@ -319,6 +325,8 @@ def messages_to_module(
         },
         message_ids_to_ast=message_ids_to_ast,
         term_ids_to_ast=term_ids_to_ast,
+        # We will fix this up before we use it:
+        current=None,  # type: ignore[reportArgumentType]
     )
     for err in function_arg_errors:
         compiler_env.add_current_message_error(err)
@@ -1232,7 +1240,7 @@ def handle_message_reference(
     return unknown_reference(msg_id, block, ref, compiler_env)
 
 
-def make_fluent_none(name: str | None, scope: codegen.Scope) -> codegen.PythonAst:
+def make_fluent_none(name: str | None, scope: codegen.Scope) -> codegen.ObjectCreation:
     # > FluentNone(name)
     # OR
     # > FluentNone()

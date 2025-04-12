@@ -42,6 +42,7 @@ class Escaper:
     use_isolating: bool | None
 
 
+# TODO make this a type than can be recognised by type checker
 null_escaper = Escaper(
     select=select_always,
     output_type=str,
