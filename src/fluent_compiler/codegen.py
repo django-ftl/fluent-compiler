@@ -6,15 +6,17 @@ from __future__ import annotations
 import keyword
 import platform
 import re
-from typing import TYPE_CHECKING, Callable, Protocol, Sequence, TypedDict, Union, runtime_checkable
+from typing import TYPE_CHECKING, Callable, Protocol, Sequence, Union, runtime_checkable
+
+from . import ast_compat as ast
+from .ast_compat import DEFAULT_AST_ARGS, DEFAULT_AST_ARGS_ADD, DEFAULT_AST_ARGS_ARGUMENTS, DEFAULT_AST_ARGS_MODULE
+from .compat import TypeAlias
+from .utils import allowable_keyword_arg_name, allowable_name
 
 if TYPE_CHECKING:
     # TODO move FtlSource to its own module
     from .compiler import FtlSource
 
-from . import ast_compat as ast
-from .compat import TypeAlias
-from .utils import allowable_keyword_arg_name, allowable_name
 
 # This module provides simple utilities for building up Python source code. It
 # implements only what is really needed by compiler.py, with a number of aims
@@ -106,20 +108,7 @@ class PythonAstList:
     child_elements: list[str] = NotImplemented
 
 
-# `compile` builtin needs these attributes on AST nodes.
-# It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
-
-
-class DefaultAstArgs(TypedDict):
-    lineno: int
-    col_offset: int
-
-
-DEFAULT_AST_ARGS: DefaultAstArgs = {"lineno": 1, "col_offset": 1}
-# Some AST types have different requirements:
-DEFAULT_AST_ARGS_MODULE = dict()
-DEFAULT_AST_ARGS_ADD = dict()
-DEFAULT_AST_ARGS_ARGUMENTS = dict()
+PythonAstType: TypeAlias = Union[PythonAst, PythonAstList]
 
 
 class Scope:
@@ -497,7 +486,7 @@ class If(Statement, PythonAst):
     def as_ast(self):
         if len(self.if_blocks) == 0:
             raise AssertionError("Should have called `finalize` on If")
-        if_ast = ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)
+        if_ast = empty_If()
         current_if = if_ast
         previous_if = None
         for condition, if_block in zip(self.conditions, self.if_blocks):
@@ -507,7 +496,7 @@ class If(Statement, PythonAst):
                 previous_if.orelse.append(current_if)
 
             previous_if = current_if
-            current_if = ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)
+            current_if = empty_If()
 
         if self.else_block.statements:
             assert previous_if is not None
@@ -837,7 +826,7 @@ class DictLookup(Expression):
     def as_ast(self):
         return ast.Subscript(
             value=self.lookup_obj.as_ast(),
-            slice=ast.Index(value=self.lookup_arg.as_ast(), **DEFAULT_AST_ARGS),
+            slice=ast.subscript_slice_object(self.lookup_arg.as_ast()),
             ctx=ast.Load(),
             **DEFAULT_AST_ARGS,
         )
@@ -911,9 +900,6 @@ def simplify(codegen_ast, simplifier):
     return codegen_ast
 
 
-PythonAstType: TypeAlias = Union[PythonAst, PythonAstList]
-
-
 def rewriting_traverse(
     node: PythonAstType | list | tuple | dict,
     func: Callable[[PythonAstType], PythonAstType],
@@ -942,3 +928,11 @@ def morph_into(item: object, new_item: object) -> None:
     # that we don't have to rewrite a tree of objects with new objects.
     item.__class__ = new_item.__class__
     item.__dict__ = new_item.__dict__
+
+
+def empty_If():
+    """
+    Create an empty If ast node. The `test` attribute
+    must be added later.
+    """
+    return ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)  # type: ignore[reportArgumentType]

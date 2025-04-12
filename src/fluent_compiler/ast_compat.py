@@ -24,6 +24,8 @@ If a new Python version changes/breaks the AST for existing features, the proces
 
 """
 import ast
+import sys
+from typing import TypedDict, TypeVar
 
 # This is a very limited subset of Python AST:
 # - only the things needed by codegen.py
@@ -64,3 +66,32 @@ Constant = ast.Constant
 AST = ast.AST
 stmt = ast.stmt
 expr = ast.expr
+
+
+# `compile` builtin needs these attributes on AST nodes.
+# It's hard to get something sensible we can put for line/col numbers so we put arbitrary values.
+
+
+class DefaultAstArgs(TypedDict):
+    lineno: int
+    col_offset: int
+
+
+DEFAULT_AST_ARGS: DefaultAstArgs = {"lineno": 1, "col_offset": 1}
+# Some AST types have different requirements:
+DEFAULT_AST_ARGS_MODULE = dict()
+DEFAULT_AST_ARGS_ADD = dict()
+DEFAULT_AST_ARGS_ARGUMENTS = dict()
+
+T = TypeVar("T")
+
+
+if sys.version_info < (3, 9):
+    # Old versions need an `Index` object here:
+    def subscript_slice_object(value: T) -> T:
+        return ast.Index(value, **DEFAULT_AST_ARGS)
+
+else:
+    # New versions need nothing.
+    def subscript_slice_object(value: T) -> T:
+        return value
