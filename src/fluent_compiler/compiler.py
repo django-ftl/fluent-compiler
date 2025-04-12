@@ -1187,7 +1187,7 @@ def reserve_and_assign_name(block, suggested_name, value):
 
     May skip the assignment if not necessary.
     """
-    if isinstance(value, codegen.VariableReference):
+    if isinstance(value, codegen.VariableReference2):
         # We don't need a new name, we can re-use this one.
         return value.name
 
@@ -1372,7 +1372,7 @@ class Simplifier:
             isinstance(codegen_ast, codegen.MethodCall)
             and is_fluent_none(codegen_ast.obj)
             and codegen_ast.method_name == "format"
-            and isinstance(codegen_ast.args[0], codegen.VariableReference)
+            and isinstance(codegen_ast.args[0], codegen.VariableReference2)
             and codegen_ast.args[0].name == LOCALE_NAME
         ):
             make_fluent_none_call = codegen_ast.obj
