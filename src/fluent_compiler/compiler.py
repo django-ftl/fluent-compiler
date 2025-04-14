@@ -30,6 +30,7 @@ from .errors import (
 from .escapers import (
     Escaper,
     EscaperJoin,
+    NullEscaper,
     RegisteredEscaper,
     escaper_for_message,
     escapers_compatible,
@@ -89,7 +90,7 @@ class CurrentEnvironment:
     ftl_resource: FtlResource
     term_args: dict | None = None
     in_select_expression: bool = False
-    escaper: Escaper = field(default_factory=lambda: null_escaper)
+    escaper: RegisteredEscaper | NullEscaper = field(default_factory=lambda: null_escaper)
 
 
 NumberType: TypeAlias = Union[float, decimal.Decimal]
@@ -120,7 +121,7 @@ class CompilerEnvironment:
         message_id = self.current.message_id if self.current else None
         self.errors.append((message_id, error))
 
-    def escaper_for_message(self, message_id: str | None = None) -> Escaper | RegisteredEscaper:
+    def escaper_for_message(self, message_id: str | None = None) -> RegisteredEscaper | NullEscaper:
         return escaper_for_message(self.escapers, message_id=message_id)
 
     @contextlib.contextmanager
@@ -798,7 +799,7 @@ def compile_term(
     term: fl_ast.Term | fl_ast.Attribute,
     block: codegen.Block,
     compiler_env: CompilerEnvironment,
-    new_escaper: Escaper | RegisteredEscaper,
+    new_escaper: NullEscaper | RegisteredEscaper,
     term_args: dict[str, codegen.PythonAst] | None = None,
 ) -> codegen.PythonAst:
     current_escaper = compiler_env.current.escaper
@@ -849,6 +850,7 @@ def compile_expr_select_expression(
 ) -> codegen.PythonAst:
     with compiler_env.modified(in_select_expression=True):
         key_value = compile_expr(select_expr.selector, block, compiler_env)
+        assert isinstance(key_value, codegen.Expression)
     static_retval = resolve_select_expression_statically(select_expr, key_value, block, compiler_env)
     if static_retval is not None:
         return static_retval
@@ -904,6 +906,7 @@ def compile_expr_select_expression(
                 condition = condition1
             cur_block = if_statement.add_if(condition)
         assigned_value = compile_expr(variant.value, cur_block, compiler_env)
+        assert isinstance(assigned_value, codegen.Expression)
         cur_block.add_assignment(return_tmp_name, assigned_value, allow_multiple=not first)
         first = False
         assigned_types.append(assigned_value.type)
@@ -960,7 +963,7 @@ def compile_expr_variable_reference(
         # or
         # > $tmp_name = handle_argument($tmp_name, "$name", locale, errors)
         escaper = compiler_env.current.escaper
-        if escaper is null_escaper:
+        if isinstance(escaper, NullEscaper):
             handle_argument_func_call = codegen.FunctionCall(
                 "handle_argument",
                 [
@@ -1154,7 +1157,7 @@ def finalize_expr_as_output_type(
             block,
             compiler_env,
         )
-    if escaper is null_escaper:
+    if isinstance(escaper, NullEscaper):
         # > handle_output($python_expr, locale, errors)
         return codegen.FunctionCall(
             "handle_output",
@@ -1197,7 +1200,7 @@ def is_NUMBER_call_expr(expr):
 
 def lookup_term_reference(
     ref: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | Escaper] | codegen.PythonAst:
+) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | NullEscaper] | codegen.PythonAst:
     """
     Looks up term reference, and returns either:
     - a tuple containing Term/Attribute and the escaper needed,
@@ -1366,7 +1369,7 @@ def wrap_with_escaper(
     codegen_ast: codegen.Expression, block: codegen.Block, compiler_env: CompilerEnvironment
 ) -> codegen.Expression:
     escaper = compiler_env.current.escaper
-    if escaper is null_escaper or escaper.escape is identity:
+    if isinstance(escaper, NullEscaper) or escaper.escape is identity:
         return codegen_ast
     if escaper.output_type is codegen_ast.type:
         return codegen_ast
@@ -1377,7 +1380,7 @@ def wrap_with_mark_escaped(
     codegen_ast: codegen.Expression, block: codegen.Block, compiler_env: CompilerEnvironment
 ) -> codegen.Expression:
     escaper = compiler_env.current.escaper
-    if escaper is null_escaper or escaper.mark_escaped is identity:
+    if isinstance(escaper, NullEscaper) or escaper.mark_escaped is identity:
         return codegen_ast
     if escaper.output_type is codegen_ast.type:
         return codegen_ast

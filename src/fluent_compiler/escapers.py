@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from ast import Call
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Final, Generic, Sequence, TypeVar
 
 from attr import dataclass
+from typing_extensions import Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from .codegen import Expression, FunctionCall
@@ -22,39 +23,91 @@ def identity(value):
 
 
 # Default string join function and sentinel value
-default_join = "".join
+def default_join(items: Sequence[str]) -> str:
+    return "".join(items)
 
 
-def select_always(message_id: str | None = None, **kwargs: object):
+def select_always(message_id: str | None = None, **kwargs: object) -> bool:
     return True
 
 
-@dataclass
-class Escaper:
-    # TODO - refine these types
-    # TODO - make protocol/abstract type for escaper
-    select: Callable
-    output_type: type
-    escape: Callable
-    mark_escaped: Callable
-    join: Callable
+T = TypeVar("T")
+
+
+@runtime_checkable
+class IsEscaper(Protocol[T]):
+    output_type: Final[type[T]]
+    name: Final[str]
+    use_isolating: Final[bool | None]
+
+    def select(self, **kwargs: object) -> bool:
+        ...
+
+    def escape(self, unescaped: str, /) -> T:
+        ...
+
+    def mark_escaped(self, value: str, /) -> T:
+        ...
+
+    def join(self, parts: Sequence[T], /) -> T:
+        ...
+
+
+@dataclass(frozen=True)
+class Escaper(Generic[T]):
+    select: Callable[..., bool]
+    output_type: type[T]
+    escape: Callable[[str], T]
+    mark_escaped: Callable[[str], T]
+    join: Callable[[Sequence[T]], T]
     name: str
     use_isolating: bool | None
 
 
-# TODO make this a type than can be recognised by type checker
-null_escaper = Escaper(
-    select=select_always,
-    output_type=str,
-    escape=identity,
-    mark_escaped=identity,
-    join=default_join,
-    name="null_escaper",
+class NullEscaper:
+    # select = select_always
+    # output_type = str
+    # escape = identity
+    # mark_escaped = identity
+    # join = default_join
+    def __init__(self) -> None:
+        self.name = "null_escaper"
+        self.use_isolating = None
+        self.output_type = str
+
+    def select(**kwargs: object) -> bool:
+        return True
+
+    def escape(self, unescaped: str) -> str:
+        return unescaped
+
+    def mark_escaped(self, value: str, /) -> str:
+        return value
+
+    def join(self, parts: Sequence[str], /) -> str:
+        return "".join(parts)
+
+
+null_escaper = NullEscaper()
+
+# Some tests for the types above:
+_1: IsEscaper[str] = NullEscaper()
+
+
+_2: IsEscaper[str] = Escaper(
+    name="x",
     use_isolating=None,
+    select=lambda **kwargs: True,
+    output_type=str,
+    escape=lambda unescaped, /: unescaped,
+    mark_escaped=lambda value, /: value,
+    join="".join,
 )
 
 
-def escapers_compatible(outer_escaper: Escaper | RegisteredEscaper, inner_escaper: Escaper | RegisteredEscaper) -> bool:
+def escapers_compatible(
+    outer_escaper: NullEscaper | RegisteredEscaper, inner_escaper: NullEscaper | RegisteredEscaper
+) -> bool:
     # Messages with no escaper defined can always be used from other messages,
     # because the outer message will do the escaping, and the inner message will
     # always return a simple string which must be handle by all escapers.
@@ -68,7 +121,7 @@ def escapers_compatible(outer_escaper: Escaper | RegisteredEscaper, inner_escape
 
 def escaper_for_message(
     escapers: Sequence[RegisteredEscaper] | None, message_id: str | None
-) -> Escaper | RegisteredEscaper:
+) -> RegisteredEscaper | NullEscaper:
     if escapers is not None:
         for escaper in escapers:
             if escaper.select(message_id=message_id):
