@@ -24,10 +24,11 @@ passed to the ``FluentBundle`` constructor or to ``compile_messages``.
 
 An ``escaper`` is an object that defines the following set of attributes. The
 object could be a module, or a simple namespace object you could create using
-``types.SimpleNamespace``, or an instance of a class with appropriate
-methods defined. The attributes are:
+``types.SimpleNamespace`` or the provided
+:class:`fluent_compiler.escapers.Escaper` dataclass, or an instance of a class
+with appropriate methods defined. The attributes are:
 
-- ``name`` - a simple text value that is used in error messages.
+- ``name: str`` - a simple text value that is used in error messages.
 
 - ``select(**hints)``
 
@@ -35,7 +36,7 @@ methods defined. The attributes are:
   given message (or message attribute). It is passed a number of hints as
   keyword arguments, currently only the following:
 
-  - ``message_id`` - a string that is the name of the message or term. For terms
+  - ``message_id: str`` - a string that is the name of the message or term. For terms
      it is a string with a leading dash - e.g. ``-brand-name``. For message
      attributes, it is a string in the form ``messsage-name.attribute-name``
 
@@ -48,10 +49,10 @@ methods defined. The attributes are:
   ``select`` callable of each escaper in the list of escapers is tried in turn,
   and the first to return ``True`` is used.
 
-- ``output_type`` - the type of values that are returned by ``escape``,
+- ``output_type: type`` - the type of values that are returned by ``escape``,
   ``mark_escape``, and ``join``, and therefore by the whole message.
 
-- ``escape(text_to_be_escaped)``
+- ``escape(text_to_be_escaped: str)``
 
   A callable that will escape the passed in text. It must return a value that is
   an instance of ``output_type`` (or a subclass).
@@ -64,12 +65,12 @@ methods defined. The attributes are:
   A callable that marks the passed in text as markup i.e. already escaped. It
   must return a value that is an instance of ``output_type`` (or a subclass).
 
-- ``join(parts)``
+- ``join(parts: Iterable)``
 
   A callable that accepts an iterable of components, each of type
   ``output_type``, and combines them into a larger value of the same type.
 
-- ``use_isolating``
+- ``use_isolating: bool | None``
 
   A boolean that determines whether the normal bidi isolating characters should
   be inserted. If it is ``None`` the value from the ``FluentBundle`` will be
@@ -77,11 +78,11 @@ methods defined. The attributes are:
 
 The escaping functions need to obey some rules:
 
-- escape must be idempotent:
+- ``escape`` must be idempotent:
 
   ``escape(escape(text)) == escape(text)``
 
-- escape must be a no-op on the output of ``mark_escaped``:
+- ``escape`` must be a no-op on the output of ``mark_escaped``:
 
   ``escape(mark_escaped(text)) == mark_escaped(text)``
 
@@ -101,13 +102,13 @@ This example is for
 
 .. code-block:: python
 
-   from fluent_compiler.utils import SimpleNamespace
+   from fluent_compiler.escapers import Escaper
    from markupsafe import Markup, escape
 
    empty_markup = Markup('')
 
-   html_escaper = SimpleNamespace(
-       select=lambda message_id=None, **hints: message_id.endswith('-html'),
+   html_escaper = Escaper(
+       select=lambda message_id, **hints: message_id.endswith('-html'),
        output_type=Markup,
        mark_escaped=Markup,
        escape=escape,

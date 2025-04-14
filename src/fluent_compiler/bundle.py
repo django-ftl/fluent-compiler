@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from fluent_compiler.escapers import Escaper
 
@@ -25,10 +25,10 @@ class FluentBundle:
     def __init__(
         self,
         locale: str,
-        resources: list[FtlResource],
+        resources: Sequence[FtlResource],
         functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: list[Escaper] | None = None,
+        escapers: Sequence[Escaper] | None = None,
     ):
         self.locale = locale
         compiled_ftl = compile_messages(
@@ -48,7 +48,7 @@ class FluentBundle:
         text: str,
         functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: list[Escaper] | None = None,
+        escapers: Sequence[Escaper] | None = None,
     ) -> FluentBundle:
         return cls(
             locale,

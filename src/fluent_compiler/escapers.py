@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from ast import Call
 from typing import TYPE_CHECKING, Callable, Final, Generic, Sequence, TypeVar
 
 from attr import dataclass
 from typing_extensions import Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from .codegen import Expression, FunctionCall
+    from .codegen import Expression, PythonAst
     from .compiler import CompilerEnvironment
 
+from . import ast_compat as ast
 from . import codegen
 
 
@@ -120,12 +120,11 @@ def escapers_compatible(
 
 
 def escaper_for_message(
-    escapers: Sequence[RegisteredEscaper] | None, message_id: str | None
+    escapers: Sequence[RegisteredEscaper], message_id: str | None
 ) -> RegisteredEscaper | NullEscaper:
-    if escapers is not None:
-        for escaper in escapers:
-            if escaper.select(message_id=message_id):
-                return escaper
+    for escaper in escapers:
+        if escaper.select(message_id=message_id):
+            return escaper
 
     return null_escaper
 
@@ -211,14 +210,14 @@ class RegisteredEscaper:
         return getattr(self._escaper, "use_isolating", None)
 
 
-class EscaperJoin(codegen.StringJoin):
-    def __init__(self, parts: list[FunctionCall], escaper: RegisteredEscaper, scope: codegen.Scope):
+class EscaperJoin(codegen.StringJoinBase):
+    def __init__(self, parts: Sequence[PythonAst], escaper: RegisteredEscaper, scope: codegen.Scope):
         super().__init__(parts)
         self.type = escaper.output_type
         self.escaper = escaper
         self.scope = scope
 
-    def as_ast(self) -> Call:
+    def as_ast(self) -> ast.expr:
         if self.escaper.join is default_join:
             return super().as_ast()
         else:
@@ -231,8 +230,10 @@ class EscaperJoin(codegen.StringJoin):
             ).as_ast()
 
     @classmethod
-    def build(cls, parts: list[Expression], escaper: RegisteredEscaper, scope: codegen.Scope) -> codegen.PythonAst:
-        if escaper.name == null_escaper.name:
+    def build_with_escaper(
+        cls, parts: Sequence[Expression], escaper: RegisteredEscaper | NullEscaper, scope: codegen.Scope
+    ) -> codegen.PythonAst:
+        if isinstance(escaper, NullEscaper):
             return codegen.StringJoin.build(parts)
 
         new_parts = []

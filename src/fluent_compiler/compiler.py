@@ -110,7 +110,7 @@ class CompilerEnvironment:
     current: CurrentEnvironment
     message_mapping: dict[str, str] = field(default_factory=dict)
     errors: list[CompilationErrorItem] = field(default_factory=list)
-    escapers: Sequence[RegisteredEscaper] | None = None
+    escapers: Sequence[RegisteredEscaper] = field(default_factory=list)
     functions: Mapping[str, Callable] = field(default_factory=dict)
     function_renames: dict[str, str] = field(default_factory=dict)
     functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
@@ -183,10 +183,10 @@ class CompiledFtl:
 
 def compile_messages(
     locale: str,
-    resources: list[FtlResource],
+    resources: Sequence[FtlResource],
     use_isolating: bool = True,
     functions: dict[str, Callable] | None = None,
-    escapers: list[Escaper] | None = None,
+    escapers: Sequence[Escaper] | None = None,
 ) -> CompiledFtl:
     """
     Compile a list of FtlResource to a Python module,
@@ -364,15 +364,14 @@ def messages_to_module(
         assert name == k, f"Expected {name}=={k}"
 
     # Reserve names for escapers
-    if compiler_env.escapers is not None:
-        for escaper in compiler_env.escapers:
-            for name, func, properties in escaper.get_reserved_names_with_properties():
-                assigned_name = module.scope.reserve_name(name, properties=properties)
-                # We've chosen the names to not clash with anything that
-                # we've already set up.
-                assert assigned_name == name
-                assert assigned_name not in module_globals
-                module_globals[assigned_name] = func
+    for escaper in compiler_env.escapers:
+        for name, func, properties in escaper.get_reserved_names_with_properties():
+            assigned_name = module.scope.reserve_name(name, properties=properties)
+            # We've chosen the names to not clash with anything that
+            # we've already set up.
+            assert assigned_name == name
+            assert assigned_name not in module_globals
+            module_globals[assigned_name] = func
 
     # Reserve names for function arguments, so that we always
     # know the name of these arguments without needing to do
@@ -751,7 +750,7 @@ def compile_expr_pattern(
             parts.append(wrap_with_escaper(codegen.String(PDI), block, compiler_env))
 
     # > f'$[p for p in parts]'
-    return EscaperJoin.build(
+    return EscaperJoin.build_with_escaper(
         [finalize_expr_as_output_type(p, block, compiler_env) for p in parts],
         compiler_env.current.escaper,
         block.scope,

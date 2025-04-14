@@ -563,7 +563,7 @@ class String(Expression):
     def __init__(self, string_value):
         self.string_value = string_value
 
-    def as_ast(self):
+    def as_ast(self) -> ast.expr:
         return ast.Constant(
             self.string_value,
             kind=None,  # 3.8, indicates no prefix, needed only for tests
@@ -623,14 +623,17 @@ class StringJoinBase(Expression):
 
     type = str
 
-    def __init__(self, parts):
+    def __init__(self, parts: Sequence[Expression]):
         self.parts = parts
 
     def __repr__(self):
         return f"{self.__class__.__name__}([{', '.join(repr(p) for p in self.parts)}])"
 
     @classmethod
-    def build(cls, parts):
+    def build(cls: type[StringJoinBase], parts: Sequence[Expression]) -> StringJoinBase | Expression:
+        """
+        Build a string join operation, but return a simpler expression if possible.
+        """
         # Merge adjacent String objects.
         new_parts = []
         for part in parts:
@@ -651,7 +654,7 @@ class StringJoinBase(Expression):
 class FStringJoin(StringJoinBase):
     def as_ast(self):
         # f-strings
-        values = []
+        values: list[ast.expr] = []
         for part in self.parts:
             if isinstance(part, String):
                 values.append(part.as_ast())

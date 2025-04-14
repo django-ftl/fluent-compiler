@@ -20,7 +20,7 @@ class HtmlEscaper:
     def __init__(self, test_case):
         self.test_case = test_case
 
-    def select(self, message_id=None, **hints):
+    def select(self, message_id: str, **hints):
         return message_id.endswith("-html")
 
     def mark_escaped(self, escaped):
@@ -83,7 +83,7 @@ class MarkdownEscaper:
     def __init__(self, test_case):
         self.test_case = test_case
 
-    def select(self, message_id=None, **hints):
+    def select(self, message_id: str, **hints):
         return message_id.endswith("-md")
 
     def mark_escaped(self, escaped):
