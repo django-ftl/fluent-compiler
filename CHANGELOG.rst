@@ -6,6 +6,14 @@ fluent_compiler 1.2 (unreleased)
 
 * Dropped Python 3.7 support
 * Compiler performance improvements - thanks `@leamingrad <https://github.com/leamingrad>`_.
+* Switched from `attrs <https://www.attrs.org/en/stable/index.html>`_ to stdlib
+  `dataclasses <https://docs.python.org/3/library/dataclasses.html>`_, and added
+  lots of type signatures and cleaned up internally.
+  * The documented API is still exactly the same as it was. However, if you were
+    depending on implementation details, like the fact that ``CompiledFtl`` was
+    an attrs dataclass when it is now a stdlib dataclass, there may be some
+    small backwards incompatibilities. In addition if you are running a type
+    checker, you may notice some differences as more things will be checked.
 
 fluent_compiler 1.1 (2024-04-02)
 --------------------------------
