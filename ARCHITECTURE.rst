@@ -103,6 +103,35 @@ FTL functions.
 Other related level classes for the user are provided in
 ``fluent_compiler.resource`` and ``fluent_compiler.escapers``.
 
+AST Types
+~~~~~~~~~
+
+As we are translating from one language to another, it is easy to get confused
+about types of Abstract Syntax Tree objects in the different languages,
+especially as sometimes we use identical class names. Here is a quick overview:
+
+- FTL (Fluent Translation List) has its own AST types. In the ``compiler.py``
+  module, these are imported as ``fl_ast``. So, for example,
+  ``fl_ast.VariableReference`` is an AST node representing a variable reference
+  in a Fluent document.
+
+- Python AST. This is the end product we generate. It is imported directly into
+  the ``ast_compat.py`` module. From there it is imported into the
+  ``codegen.py`` module as ``py_ast``.
+
+- Codegen AST. We have our own layer of classes for Python code generation which
+  are used by the ``compiler.py`` module, which represent a simplified Python
+  AST with conveniences for easier construction, and eventually emit Python AST.
+  The base classes used here are ``CodeGenAst`` and ``CodeGenAstList``.
+
+  This module is imported into ``compiler.py`` as ``codegen``.
+
+So, for example, in ``compiler.py`` you find both ``fl_ast.VariableReference``
+and ``codegen.VariableReference``. In ``codegen.py`` you find both ``If`` (the
+``If`` AST node defined in the ``codgen.py`` module) and ``py_ast.If`` (the
+Python AST node from Python stdlib). If you get lost remember which module/layer
+you are in.
+
 Tests
 ~~~~~
 

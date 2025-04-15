@@ -54,7 +54,7 @@ def attribute_ast_to_id(attribute: Attribute, parent_ast: Message | Term) -> str
     return "".join([ast_to_id(parent_ast), ATTRIBUTE_SEPARATOR, attribute.id.name])
 
 
-def allowable_name(ident: str, for_method: bool = False, allow_builtin: bool = False):
+def allowable_name(ident: str, for_method: bool = False, allow_builtin: bool = False) -> bool:
     if keyword.iskeyword(ident):
         return False
 
@@ -107,8 +107,8 @@ def inspect_function_args(function: Callable, name: str, errors: list[Any]) -> F
 
 def args_match(
     function_name: str,
-    args: list[codegen.PythonAst],
-    kwargs: dict[str, codegen.PythonAst],
+    args: list[codegen.CodeGenAst],
+    kwargs: dict[str, codegen.CodeGenAst],
     arg_spec: FunctionArgSpec,
 ) -> Any:
     """

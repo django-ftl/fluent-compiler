@@ -16,7 +16,7 @@ from fluent.syntax import FluentParser
 from fluent.syntax import ast as fl_ast
 from typing_extensions import TypeGuard
 
-from . import ast_compat as ast
+from . import ast_compat as py_ast
 from . import codegen, runtime
 from .builtins import BUILTINS
 from .compat import TypeAlias
@@ -58,7 +58,7 @@ PDI = "\u2069"
 
 BUILTIN_NUMBER = "NUMBER"
 BUILTIN_DATETIME = "DATETIME"
-BUILTIN_RETURN_TYPES = {
+BUILTIN_RETURN_TYPES: dict[str, type] = {
     BUILTIN_NUMBER: FluentNumber,
     BUILTIN_DATETIME: FluentDateType,
 }
@@ -142,7 +142,7 @@ class CompilerEnvironment:
 
     def modified_for_term_reference(
         self,
-        term_args: dict[str, codegen.PythonAst] | None = None,
+        term_args: dict[str, codegen.CodeGenAst] | None = None,
     ) -> ContextManager[CompilerEnvironment]:
         return self.modified(term_args=term_args if term_args is not None else {})
 
@@ -176,7 +176,7 @@ class CompiledFtl:
     errors: list[CompilationErrorItem] = field(default_factory=list)
 
     # Compiled output as Python AST.
-    module_ast: ast.Module | None = None
+    module_ast: py_ast.Module | None = None
 
     locale: str | None = None
 
@@ -344,15 +344,15 @@ def messages_to_module(
     module_globals[LOCALE_NAME] = locale
 
     # Return types of known functions.
-    known_return_types = {}
+    known_return_types: dict[str, type] = {}
     known_return_types.update(BUILTIN_RETURN_TYPES)
     known_return_types.update(runtime.RETURN_TYPES)
 
     module_globals[PLURAL_FORM_FOR_NUMBER_NAME] = plural_form_for_number
     known_return_types[PLURAL_FORM_FOR_NUMBER_NAME] = str
 
-    def get_name_properties(name):
-        properties = {}
+    def get_name_properties(name: str) -> dict[str, object]:
+        properties: dict[str, object] = {}
         if name in known_return_types:
             properties[codegen.PROPERTY_RETURN_TYPE] = known_return_types[name]
         return properties
@@ -452,7 +452,7 @@ def compile_message(
     function_name: str,
     module: codegen.Module,
     compiler_env: CompilerEnvironment,
-) -> codegen.PythonAst:
+) -> codegen.Function:
     msg_func = codegen.Function(
         parent_scope=module.scope,
         name=function_name,
@@ -609,7 +609,7 @@ def contains_reference_cycle(msg: fl_ast.Attribute | fl_ast.Message, compiler_en
 #
 # The `compile_expr_XXXX functions` form the heart of handling all FTL syntax.
 # They convert FTL AST nodes (as created by fluent.syntax parser)
-# into Python expressions (in the form of our `codegen.PythonAst` objects).
+# into Python expressions (in the form of our `codegen.CodeGenAst` objects).
 #
 # The first `compile_expr` function is decorated with `@singledispatch`,
 # so we can then dispatch to other functions based on the type of the first
@@ -617,7 +617,7 @@ def contains_reference_cycle(msg: fl_ast.Attribute | fl_ast.Message, compiler_en
 # `if isinstance(ast, XXX): handle_XXX(...)`, or other similar visitor patterns.
 #
 # The basic structure is that each `compile_expr` returns a single
-# codegen.PythonAst object that corresponds to the passed in FTL AST (the first
+# codegen.CodeGenAst object that corresponds to the passed in FTL AST (the first
 # argument). That is, the overall strategy is to compile each FTL AST object to
 # a single Python expression.
 #
@@ -684,7 +684,7 @@ def contains_reference_cycle(msg: fl_ast.Attribute | fl_ast.Message, compiler_en
 #       -> compile_expr_message_reference
 #
 #
-# Note that some of the codegen.PythonAst objects can simplify themselves as
+# Note that some of the codegen.CodeGenAst objects can simplify themselves as
 # they are being built or finalised, and further transformations (i.e.
 # simplifications and optimizations) are done after we've built up a complete
 # Python AST for the function. So the easy one-to-one correspondence above will
@@ -701,7 +701,7 @@ def contains_reference_cycle(msg: fl_ast.Attribute | fl_ast.Message, compiler_en
 @singledispatch
 def compile_expr(
     element: fl_ast.BaseNode, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     """
     Compiles a Fluent expression into a Python one, return
     an object of type codegen.Expression.
@@ -716,7 +716,7 @@ def compile_expr(
 @compile_expr.register(fl_ast.Message)
 def compile_expr_message(
     message: fl_ast.Message, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     return compile_expr(message.value, block, compiler_env)
 
 
@@ -728,14 +728,14 @@ def compile_expr_term(term, block, compiler_env):
 @compile_expr.register(fl_ast.Attribute)
 def compile_expr_attribute(
     attribute: fl_ast.Attribute, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     return compile_expr(attribute.value, block, compiler_env)
 
 
 @compile_expr.register(fl_ast.Pattern)
 def compile_expr_pattern(
     pattern: fl_ast.Pattern, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     parts = []
     subelements = pattern.elements
 
@@ -760,14 +760,14 @@ def compile_expr_pattern(
 @compile_expr.register(fl_ast.TextElement)
 def compile_expr_text(
     text: fl_ast.TextElement, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     return wrap_with_mark_escaped(codegen.String(text.value), block, compiler_env)
 
 
 @compile_expr.register(fl_ast.StringLiteral)
 def compile_expr_string_expression(
     expr: fl_ast.StringLiteral, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     return codegen.String(expr.parse()["value"])
 
 
@@ -783,14 +783,14 @@ def compile_expr_number_expression(
 @compile_expr.register(fl_ast.Placeable)
 def compile_expr_placeable(
     placeable: fl_ast.Placeable, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     return compile_expr(placeable.expression, block, compiler_env)
 
 
 @compile_expr.register(fl_ast.MessageReference)
 def compile_expr_message_reference(
     reference: fl_ast.MessageReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.FunctionCall:
+) -> codegen.Expression:
     return handle_message_reference(reference, block, compiler_env)
 
 
@@ -799,8 +799,8 @@ def compile_term(
     block: codegen.Block,
     compiler_env: CompilerEnvironment,
     new_escaper: NullEscaper | RegisteredEscaper,
-    term_args: dict[str, codegen.PythonAst] | None = None,
-) -> codegen.PythonAst:
+    term_args: dict[str, codegen.CodeGenAst] | None = None,
+) -> codegen.CodeGenAst:
     current_escaper = compiler_env.current.escaper
     if not escapers_compatible(current_escaper, new_escaper):
         # TODO bug here when attribute is passed
@@ -820,9 +820,9 @@ def compile_term(
 @compile_expr.register(fl_ast.TermReference)
 def compile_expr_term_reference(
     reference: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     looked_up = lookup_term_reference(reference, block, compiler_env)
-    if isinstance(looked_up, codegen.PythonAst):
+    if isinstance(looked_up, codegen.CodeGenAst):
         return looked_up
     term, new_escaper = looked_up
     if reference.arguments:
@@ -846,7 +846,7 @@ def compile_expr_term_reference(
 @compile_expr.register(fl_ast.SelectExpression)
 def compile_expr_select_expression(
     select_expr: fl_ast.SelectExpression, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     with compiler_env.modified(in_select_expression=True):
         key_value = compile_expr(select_expr.selector, block, compiler_env)
         assert isinstance(key_value, codegen.Expression)
@@ -930,7 +930,7 @@ def compile_expr_variant_name(
 @compile_expr.register(fl_ast.VariableReference)
 def compile_expr_variable_reference(
     argument: fl_ast.VariableReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     name = argument.id.name
     if compiler_env.current.term_args is not None:
         # We are in a term, all args are passed explicitly, not inherited from
@@ -1039,7 +1039,7 @@ def compile_expr_variable_reference(
 @compile_expr.register(fl_ast.FunctionReference)
 def compile_expr_function_reference(
     expr: fl_ast.FunctionReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.CodeGenAst:
     args = [compile_expr(arg, block, compiler_env) for arg in expr.arguments.positional]
     kwargs = {kwarg.name.name: compile_expr(kwarg.value, block, compiler_env) for kwarg in expr.arguments.named}
 
@@ -1082,7 +1082,7 @@ def compile_expr_function_reference(
 # Compiler utilities and common code:
 
 
-def add_msg_error_with_expr(block: codegen.Block, exception_expr: codegen.PythonAst):
+def add_msg_error_with_expr(block: codegen.Block, exception_expr: codegen.CodeGenAst):
     block.add_statement(codegen.MethodCall(block.scope.variable(ERRORS_NAME), "append", [exception_expr]))
 
 
@@ -1104,7 +1104,7 @@ def add_static_msg_error(block: codegen.Block, exception: Exception) -> None:
     )
 
 
-def do_message_call(msg_id: str, block: codegen.Block, compiler_env: CompilerEnvironment) -> codegen.PythonAst:
+def do_message_call(msg_id: str, block: codegen.Block, compiler_env: CompilerEnvironment) -> codegen.Expression:
     current_escaper = compiler_env.current.escaper
     new_escaper = compiler_env.escaper_for_message(msg_id)
     if not escapers_compatible(current_escaper, new_escaper):
@@ -1199,11 +1199,11 @@ def is_NUMBER_call_expr(expr):
 
 def lookup_term_reference(
     ref: fl_ast.TermReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | NullEscaper] | codegen.PythonAst:
+) -> tuple[fl_ast.Term | fl_ast.Attribute, RegisteredEscaper | NullEscaper] | codegen.CodeGenAst:
     """
     Looks up term reference, and returns either:
     - a tuple containing Term/Attribute and the escaper needed,
-    - OR a PythonAst object representing an error if not found.
+    - OR a CodeGenAst object representing an error if not found.
     """
     # This could be turned into 'handle_term_reference', (similar to
     # 'handle_message_reference' below) once VariantList and VariantExpression
@@ -1231,7 +1231,7 @@ def lookup_term_reference(
 
 def handle_message_reference(
     ref: fl_ast.MessageReference, block: codegen.Block, compiler_env: CompilerEnvironment
-) -> codegen.PythonAst:
+) -> codegen.Expression:
     msg_id = reference_to_id(ref)
     if msg_id in compiler_env.message_ids_to_ast:
         return do_message_call(msg_id, block, compiler_env)
@@ -1265,7 +1265,7 @@ def numeric_to_native(val: str) -> float | int:
     return int(val)
 
 
-def reserve_and_assign_name(block: codegen.Block, suggested_name: str, value: codegen.PythonAst) -> str:
+def reserve_and_assign_name(block: codegen.Block, suggested_name: str, value: codegen.CodeGenAst) -> str:
     """
     Reserves a name for the value in the scope block and adds assignment if
     necessary, returning the name reserved.
@@ -1286,9 +1286,9 @@ def resolve_select_expression_statically(
     key_ast: codegen.Expression,
     block: codegen.Block,
     compiler_env: CompilerEnvironment,
-) -> codegen.PythonAst | None:
+) -> codegen.CodeGenAst | None:
     """
-    Resolve a select expression statically, given a codegen.PythonAst object
+    Resolve a select expression statically, given a codegen.CodeGenAst object
     `key_ast` representing the key value, or return None if not possible.
     """
     key_is_fluent_none = is_fluent_none(key_ast)
@@ -1341,7 +1341,7 @@ def unknown_reference(
     block: codegen.Block,
     ast_node: fl_ast.MessageReference | fl_ast.TermReference,
     compiler_env: CompilerEnvironment,
-) -> codegen.PythonAst:
+) -> codegen.Expression:
     error = unknown_reference_error_obj(name, ast_node, compiler_env)
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
@@ -1409,7 +1409,7 @@ class Simplifier:
     def __init__(self, compiler_env: CompilerEnvironment):
         self.compiler_env = compiler_env
 
-    def __call__(self, codegen_ast: Any, changes: list[Any | bool]) -> Any:
+    def __call__(self, codegen_ast: Any, changes: list[Any | bool]) -> codegen.CodeGenAst:
         # Simplifications we can do on the AST tree. We append to
         # changes if we made a change, and either mutate codegen_ast or
         # return a new/different object.

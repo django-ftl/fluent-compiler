@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .codegen import Expression
     from .compiler import CompilerEnvironment
 
-from . import ast_compat as ast
+from . import ast_compat as py_ast
 from . import codegen
 
 
@@ -217,7 +217,7 @@ class EscaperJoin(codegen.StringJoinBase):
         self.escaper = escaper
         self.scope = scope
 
-    def as_ast(self) -> ast.expr:
+    def as_ast(self) -> py_ast.expr:
         if self.escaper.join is default_join:
             return super().as_ast()
         else:
@@ -232,7 +232,7 @@ class EscaperJoin(codegen.StringJoinBase):
     @classmethod
     def build_with_escaper(
         cls, parts: Sequence[Expression], escaper: RegisteredEscaper | NullEscaper, scope: codegen.Scope
-    ) -> codegen.PythonAst:
+    ) -> codegen.CodeGenAst:
         if isinstance(escaper, NullEscaper):
             return codegen.StringJoin.build(parts)
 

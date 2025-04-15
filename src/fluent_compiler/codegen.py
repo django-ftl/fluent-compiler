@@ -7,9 +7,10 @@ import decimal
 import keyword
 import platform
 import re
-from typing import TYPE_CHECKING, Callable, Protocol, Sequence, Union, runtime_checkable
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Callable, Iterable, Protocol, Sequence, Union, runtime_checkable
 
-from . import ast_compat as ast
+from . import ast_compat as py_ast
 from .ast_compat import DEFAULT_AST_ARGS, DEFAULT_AST_ARGS_ADD, DEFAULT_AST_ARGS_ARGUMENTS, DEFAULT_AST_ARGS_MODULE
 from .compat import TypeAlias
 from .utils import allowable_keyword_arg_name, allowable_name
@@ -57,11 +58,17 @@ if TYPE_CHECKING:
 
 PROPERTY_TYPE = "PROPERTY_TYPE"
 PROPERTY_RETURN_TYPE = "PROPERTY_RETURN_TYPE"
-UNKNOWN_TYPE = object
-SENSITIVE_FUNCTIONS = [
+# UNKNOWN_TYPE is just an alias for `object` for clarity.
+UNKNOWN_TYPE: type = object
+# It is important for our usage of it that UNKNOWN_TYPE is a `type`,
+# and the most general `type`.
+assert isinstance(UNKNOWN_TYPE, type)
+
+
+SENSITIVE_FUNCTIONS = {
     # builtin functions that we should never be calling from our code
     # generation. This is a defense-in-depth mechansim to stop our code
-    # generation become a code exectution vulnerability, we also have
+    # generation becoming a code execution vulnerability. We also have
     # higher level code that ensures we are not generating calls
     # to arbitrary Python functions.
     # This is not a comprehensive list of functions we are not using, but
@@ -82,34 +89,36 @@ SENSITIVE_FUNCTIONS = [
     "object",
     "reload",
     "type",
-]
+}
 
 
-class PythonAst:
+class CodeGenAst(ABC):
     """
     Base class representing a simplified Python AST (not the real one).
     Generates real `ast.*` nodes via `as_ast()` method.
     """
 
-    def as_ast(self) -> ast.AST:
+    @abstractmethod
+    def as_ast(self) -> py_ast.AST:
         raise NotImplementedError(f"{self.__class__!r}.as_ast()")
 
     child_elements: list[str] = NotImplemented
 
 
-class PythonAstList:
+class CodeGenAstList(ABC):
     """
-    Alternative base class to PythonAst when we have code that wants to return a
+    Alternative base class to CodeGenAst when we have code that wants to return a
     list of AST objects.
     """
 
-    def as_ast_list(self) -> list[ast.stmt]:
+    @abstractmethod
+    def as_ast_list(self, allow_empty: bool = True) -> list[py_ast.stmt]:
         raise NotImplementedError(f"{self.__class__!r}.as_ast_list()")
 
     child_elements: list[str] = NotImplemented
 
 
-PythonAstType: TypeAlias = Union[PythonAst, PythonAstList]
+CodeGenAstType: TypeAlias = Union[CodeGenAst, CodeGenAstList]
 
 
 class Scope:
@@ -117,7 +126,7 @@ class Scope:
         self.parent_scope = parent_scope
         self.names = set()
         self._function_arg_reserved_names = set()
-        self._properties = {}
+        self._properties: dict[str, dict[str, object]] = {}
         self._assignments = {}
 
     def is_name_in_use(self, name: str) -> bool:
@@ -141,7 +150,13 @@ class Scope:
     def is_name_reserved(self, name: str) -> bool:
         return self.is_name_in_use(name) or self.is_name_reserved_function_arg(name)
 
-    def reserve_name(self, requested, function_arg=False, is_builtin=False, properties=None):
+    def reserve_name(
+        self,
+        requested: str,
+        function_arg: bool = False,
+        is_builtin: bool = False,
+        properties: dict[str, object] | None = None,
+    ):
         """
         Reserve a name as being in use in a scope.
 
@@ -185,7 +200,7 @@ class Scope:
 
         return _add(attempt)
 
-    def reserve_function_arg_name(self, name):
+    def reserve_function_arg_name(self, name: str):
         """
         Reserve a name for *later* use as a function argument. This does not result
         in that name being considered 'in use' in the current scope, but will
@@ -198,7 +213,7 @@ class Scope:
             raise AssertionError(f"Can't reserve '{name}' as function arg name as it is already reserved")
         self._function_arg_reserved_names.add(name)
 
-    def get_name_properties(self, name):
+    def get_name_properties(self, name) -> dict[str, object]:
         """
         Gets a dictionary of properties for the name.
         Raises exception if the name is not reserved in this scope or parent
@@ -209,7 +224,7 @@ class Scope:
             raise LookupError(f"{name} not found in properties")
         return self.parent_scope.get_name_properties(name)
 
-    def set_name_properties(self, name, props):
+    def set_name_properties(self, name: str, props: dict[str, object]):
         """
         Sets a dictionary of properties for the name.
         Raises exception if the name is not reserved in this scope or parent.
@@ -224,7 +239,7 @@ class Scope:
             else:
                 scope = scope.parent_scope
 
-    def find_names_by_property(self, prop_name, prop_val):
+    def find_names_by_property(self, prop_name: str, prop_val: object) -> list[str]:
         """
         Retrieve all names that match the supplied property name and value
         """
@@ -235,13 +250,13 @@ class Scope:
             if k == prop_name and v == prop_val
         ]
 
-    def has_assignment(self, name):
+    def has_assignment(self, name: str) -> bool:
         return name in self._assignments
 
-    def register_assignment(self, name):
+    def register_assignment(self, name: str) -> None:
         self._assignments[name] = None
 
-    def variable(self, name):
+    def variable(self, name: str) -> VariableReference:
         # Convenience utility for returning a VariableReference
         return VariableReference(name, self)
 
@@ -250,7 +265,7 @@ _IDENTIFIER_SANITIZER_RE = re.compile("[^a-zA-Z0-9_]")
 _IDENTIFIER_START_RE = re.compile("^[a-zA-Z_]")
 
 
-def cleanup_name(name):
+def cleanup_name(name: str) -> str:
     """
     Convert name to a allowable identifier
     """
@@ -261,7 +276,7 @@ def cleanup_name(name):
     return name
 
 
-class Statement:
+class Statement(CodeGenAst):
     pass
 
 
@@ -271,18 +286,18 @@ class SupportsNameAssignment(Protocol):
         ...
 
 
-class _Assignment(Statement, PythonAst):
+class _Assignment(Statement):
     child_elements = ["value"]
 
-    def __init__(self, name, value):
+    def __init__(self, name: str, value: Expression):
         self.name = name
         self.value = value
 
     def as_ast(self):
         if not allowable_name(self.name):
             raise AssertionError(f"Expected {self.name} to be a valid Python identifier")
-        return ast.Assign(
-            targets=[ast.Name(id=self.name, ctx=ast.Store(), **DEFAULT_AST_ARGS)],
+        return py_ast.Assign(
+            targets=[py_ast.Name(id=self.name, ctx=py_ast.Store(), **DEFAULT_AST_ARGS)],
             value=self.value.as_ast(),
             **DEFAULT_AST_ARGS,
         )
@@ -291,18 +306,20 @@ class _Assignment(Statement, PythonAst):
         return self.name == name
 
 
-class Block(PythonAstList):
+class Block(CodeGenAstList):
     child_elements = ["statements"]
 
     def __init__(self, scope: Scope, parent_block: Block | None = None):
         self.scope = scope
-        self.statements: list[Expression | Block] = []
+        # We all `Expression` here for things like MethodCall which
+        # are bare expressions that are still useful for side effects
+        self.statements: list[Block | Statement | Expression] = []
         self.parent_block = parent_block
 
-    def as_ast_list(self, allow_empty=True) -> list[ast.stmt]:
+    def as_ast_list(self, allow_empty: bool = True) -> list[py_ast.stmt]:
         retval = []
         for s in self.statements:
-            if isinstance(s, PythonAstList):
+            if isinstance(s, CodeGenAstList):
                 retval.extend(s.as_ast_list(allow_empty=True))
             else:
                 if isinstance(s, Statement):
@@ -310,13 +327,13 @@ class Block(PythonAstList):
                 else:
                     # Things like bare function/method calls need to be wrapped
                     # in `Expr` to match the way Python parses.
-                    retval.append(ast.Expr(s.as_ast(), **DEFAULT_AST_ARGS))
+                    retval.append(py_ast.Expr(s.as_ast(), **DEFAULT_AST_ARGS))
 
         if len(retval) == 0 and not allow_empty:
-            return [ast.Pass(**DEFAULT_AST_ARGS)]
+            return [py_ast.Pass(**DEFAULT_AST_ARGS)]
         return retval
 
-    def add_statement(self, statement):
+    def add_statement(self, statement: Statement | Block | Expression) -> None:
         self.statements.append(statement)
         if isinstance(statement, Block):
             if statement.parent_block is None:
@@ -328,7 +345,7 @@ class Block(PythonAstList):
                     )
 
     # Safe alternatives to Block.statements being manipulated directly:
-    def add_assignment(self, name, value, allow_multiple=False):
+    def add_assignment(self, name: str, value: Expression, allow_multiple: bool = False):
         """
         Adds an assigment of the form:
 
@@ -345,14 +362,14 @@ class Block(PythonAstList):
 
         self.add_statement(_Assignment(name, value))
 
-    def add_function(self, func_name, func):
+    def add_function(self, func_name: str, func: Function) -> None:
         assert func.func_name == func_name
         self.add_statement(func)
 
-    def add_return(self, value):
+    def add_return(self, value: Expression) -> None:
         self.add_statement(Return(value))
 
-    def has_assignment_for_name(self, name):
+    def has_assignment_for_name(self, name: str) -> bool:
         for s in self.statements:
             if isinstance(s, SupportsNameAssignment) and s.has_assignment_for_name(name):
                 return True
@@ -361,18 +378,18 @@ class Block(PythonAstList):
         return False
 
 
-class Module(Block, PythonAst):
+class Module(Block, CodeGenAst):
     def __init__(self):
         scope = Scope(parent_scope=None)
         Block.__init__(self, scope)
 
-    def as_ast(self):
-        return ast.Module(body=self.as_ast_list(), type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
+    def as_ast(self) -> py_ast.Module:
+        return py_ast.Module(body=self.as_ast_list(), type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
 
-    def as_multiple_module_ast(self):
-        retval = []
+    def as_multiple_module_ast(self) -> Iterable[py_ast.Module]:
+        retval: list[py_ast.Module] = []
         for item in self.as_ast_list():
-            mod = ast.Module(body=[item], type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
+            mod = py_ast.Module(body=[item], type_ignores=[], **DEFAULT_AST_ARGS_MODULE)
             if hasattr(item, "filename"):
                 # For use by compile_messages
                 mod.filename = item.filename
@@ -380,7 +397,7 @@ class Module(Block, PythonAst):
         return retval
 
 
-class Function(Scope, Statement, PythonAst):
+class Function(Scope, Statement):
     child_elements = ["body"]
 
     def __init__(
@@ -402,18 +419,18 @@ class Function(Scope, Statement, PythonAst):
         self.args = args
         self.source = source
 
-    def as_ast(self):
+    def as_ast(self) -> py_ast.stmt:
         if not allowable_name(self.func_name):
             raise AssertionError(f"Expected '{self.func_name}' to be a valid Python identifier")
         for arg in self.args:
             if not allowable_name(arg):
                 raise AssertionError(f"Expected '{arg}' to be a valid Python identifier")
 
-        func_def = ast.FunctionDef(
+        func_def = py_ast.FunctionDef(
             name=self.func_name,
-            args=ast.arguments(
+            args=py_ast.arguments(
                 posonlyargs=[],
-                args=([ast.arg(arg=arg_name, annotation=None, **DEFAULT_AST_ARGS) for arg_name in self.args]),
+                args=([py_ast.arg(arg=arg_name, annotation=None, **DEFAULT_AST_ARGS) for arg_name in self.args]),
                 vararg=None,
                 kwonlyargs=[],
                 kw_defaults=[],
@@ -433,30 +450,30 @@ class Function(Scope, Statement, PythonAst):
             # It's hard to get good line numbers for all AST objects, but
             # if we put the FTL line number of the main message on all nodes
             # this gets us a lot of the benefit for a smallish cost
-            def add_lineno(node):
+            def add_lineno(node: py_ast.AST):
                 node.lineno = source.row
 
             traverse(func_def, add_lineno)
         return func_def
 
-    def add_return(self, value):
+    def add_return(self, value: Expression):
         self.body.add_return(value)
 
 
-class Return(Statement, PythonAst):
+class Return(Statement):
     child_elements = ["value"]
 
-    def __init__(self, value):
+    def __init__(self, value: Expression):
         self.value = value
 
     def as_ast(self):
-        return ast.Return(self.value.as_ast(), **DEFAULT_AST_ARGS)
+        return py_ast.Return(self.value.as_ast(), **DEFAULT_AST_ARGS)
 
     def __repr__(self):
         return f"Return({repr(self.value)}"
 
 
-class If(Statement, PythonAst):
+class If(Statement):
     child_elements = ["if_blocks", "conditions", "else_block"]
 
     def __init__(self, parent_scope: Scope, parent_block: Block | None = None):
@@ -464,8 +481,8 @@ class If(Statement, PythonAst):
         # (if/elif/elif etc), each with their own condition, with a final else
         # block. Note this is quite different from Python's AST for the same
         # thing, so conversion to AST is more complex because of this.
-        self.if_blocks = []
-        self.conditions = []
+        self.if_blocks: list[Block] = []
+        self.conditions: list[Expression] = []
         self._parent_block = parent_block
         self.else_block = Block(parent_scope, parent_block=self._parent_block)
         self._parent_scope = parent_scope
@@ -476,7 +493,7 @@ class If(Statement, PythonAst):
         self.conditions.append(condition)
         return new_if
 
-    def finalize(self):
+    def finalize(self) -> Block | Statement:
         if not self.if_blocks:
             # Unusual case of no conditions, only default case, but it
             # simplifies other code to be able to handle this uniformly. We can
@@ -484,7 +501,7 @@ class If(Statement, PythonAst):
             return self.else_block
         return self
 
-    def as_ast(self):
+    def as_ast(self) -> py_ast.If:
         if len(self.if_blocks) == 0:
             raise AssertionError("Should have called `finalize` on If")
         if_ast = empty_If()
@@ -506,26 +523,26 @@ class If(Statement, PythonAst):
         return if_ast
 
 
-class Try(Statement, PythonAst):
+class Try(Statement):
     child_elements = ["catch_exceptions", "try_block", "except_block", "else_block"]
 
-    def __init__(self, catch_exceptions, parent_scope):
+    def __init__(self, catch_exceptions: Sequence[Expression], parent_scope: Scope):
         self.catch_exceptions = catch_exceptions
         self.try_block = Block(parent_scope)
         self.except_block = Block(parent_scope)
         self.else_block = Block(parent_scope)
 
-    def as_ast(self):
-        return ast.Try(
+    def as_ast(self) -> py_ast.Try:
+        return py_ast.Try(
             body=self.try_block.as_ast_list(allow_empty=False),
             handlers=[
-                ast.ExceptHandler(
+                py_ast.ExceptHandler(
                     type=(
                         self.catch_exceptions[0].as_ast()
                         if len(self.catch_exceptions) == 1
-                        else ast.Tuple(
+                        else py_ast.Tuple(
                             elts=[e.as_ast() for e in self.catch_exceptions],
-                            ctx=ast.Load(),
+                            ctx=py_ast.Load(),
                             **DEFAULT_AST_ARGS,
                         )
                     ),
@@ -539,7 +556,7 @@ class Try(Statement, PythonAst):
             **DEFAULT_AST_ARGS,
         )
 
-    def has_assignment_for_name(self, name):
+    def has_assignment_for_name(self, name: str) -> bool:
         if (
             self.try_block.has_assignment_for_name(name) or self.else_block.has_assignment_for_name(name)
         ) and self.except_block.has_assignment_for_name(name):
@@ -547,12 +564,13 @@ class Try(Statement, PythonAst):
         return False
 
 
-class Expression(PythonAst):
+class Expression(CodeGenAst):
     # type represents the Python type this expression will produce,
     # if we know it (UNKNOWN_TYPE otherwise).
-    type = UNKNOWN_TYPE
+    type: type = UNKNOWN_TYPE
 
-    def as_ast(self) -> ast.expr:
+    @abstractmethod
+    def as_ast(self) -> py_ast.expr:
         raise NotImplementedError()
 
 
@@ -564,8 +582,8 @@ class String(Expression):
     def __init__(self, string_value: str):
         self.string_value = string_value
 
-    def as_ast(self) -> ast.expr:
-        return ast.Constant(
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Constant(
             self.string_value,
             kind=None,  # 3.8, indicates no prefix, needed only for tests
             **DEFAULT_AST_ARGS,
@@ -574,7 +592,7 @@ class String(Expression):
     def __repr__(self):
         return f"String({repr(self.string_value)})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object):
         return isinstance(other, String) and other.string_value == self.string_value
 
 
@@ -585,8 +603,8 @@ class Number(Expression):
         self.number = number
         self.type = type(number)
 
-    def as_ast(self):
-        return ast.Constant(self.number, **DEFAULT_AST_ARGS)
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Constant(self.number, **DEFAULT_AST_ARGS)
 
     def __repr__(self):
         return f"Number({repr(self.number)})"
@@ -599,20 +617,19 @@ class List(Expression):
         self.items = items
         self.type = list
 
-    def as_ast(self):
-        return ast.List(elts=[i.as_ast() for i in self.items], ctx=ast.Load(), **DEFAULT_AST_ARGS)
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.List(elts=[i.as_ast() for i in self.items], ctx=py_ast.Load(), **DEFAULT_AST_ARGS)
 
 
 class Dict(Expression):
     child_elements = ["pairs"]
 
-    def __init__(self, pairs):
-        # pairs is a list of key-value pairs (PythonAst object, PythonAst object)
+    def __init__(self, pairs: Sequence[tuple[Expression, Expression]]):
         self.pairs = pairs
         self.type = dict
 
-    def as_ast(self):
-        return ast.Dict(
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Dict(
             keys=[k.as_ast() for k, _ in self.pairs],
             values=[v.as_ast() for _, v in self.pairs],
             **DEFAULT_AST_ARGS,
@@ -636,7 +653,7 @@ class StringJoinBase(Expression):
         Build a string join operation, but return a simpler expression if possible.
         """
         # Merge adjacent String objects.
-        new_parts = []
+        new_parts: list[Expression] = []
         for part in parts:
             if len(new_parts) > 0 and isinstance(new_parts[-1], String) and isinstance(part, String):
                 new_parts[-1] = String(new_parts[-1].string_value + part.string_value)
@@ -653,33 +670,33 @@ class StringJoinBase(Expression):
 
 
 class FStringJoin(StringJoinBase):
-    def as_ast(self):
+    def as_ast(self) -> py_ast.expr:
         # f-strings
-        values: list[ast.expr] = []
+        values: list[py_ast.expr] = []
         for part in self.parts:
             if isinstance(part, String):
                 values.append(part.as_ast())
             else:
                 values.append(
-                    ast.FormattedValue(
+                    py_ast.FormattedValue(
                         value=part.as_ast(),
                         conversion=-1,
                         format_spec=None,
                         **DEFAULT_AST_ARGS,
                     )
                 )
-        return ast.JoinedStr(values=values, **DEFAULT_AST_ARGS)
+        return py_ast.JoinedStr(values=values, **DEFAULT_AST_ARGS)
 
 
 class ConcatJoin(StringJoinBase):
-    def as_ast(self):
+    def as_ast(self) -> py_ast.expr:
         # Concatenate with +
         left = self.parts[0].as_ast()
         for part in self.parts[1:]:
             right = part.as_ast()
-            left = ast.BinOp(
+            left = py_ast.BinOp(
                 left=left,
-                op=ast.Add(**DEFAULT_AST_ARGS_ADD),
+                op=py_ast.Add(**DEFAULT_AST_ARGS_ADD),
                 right=right,
                 **DEFAULT_AST_ARGS,
             )
@@ -700,16 +717,18 @@ else:
 class VariableReference(Expression):
     child_elements = []
 
-    def __init__(self, name, scope):
+    def __init__(self, name: str, scope: Scope):
         if not scope.is_name_in_use(name):
             raise AssertionError(f"Cannot refer to undefined variable '{name}'")
         self.name = name
-        self.type = scope.get_name_properties(name).get(PROPERTY_TYPE, UNKNOWN_TYPE)
+        looked_up_type = scope.get_name_properties(name).get(PROPERTY_TYPE, UNKNOWN_TYPE)
+        assert isinstance(looked_up_type, type)
+        self.type = looked_up_type
 
-    def as_ast(self):
+    def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.name, allow_builtin=True):
             raise AssertionError(f"Expected {self.name} to be a valid Python identifier")
-        return ast.Name(id=self.name, ctx=ast.Load(), **DEFAULT_AST_ARGS)
+        return py_ast.Name(id=self.name, ctx=py_ast.Load(), **DEFAULT_AST_ARGS)
 
     def __eq__(self, other):
         return type(other) is type(self) and other.name == self.name
@@ -721,7 +740,14 @@ class VariableReference(Expression):
 class FunctionCall(Expression):
     child_elements = ["args", "kwargs"]
 
-    def __init__(self, function_name, args, kwargs, scope, expr_type=UNKNOWN_TYPE):
+    def __init__(
+        self,
+        function_name: str,
+        args: Sequence[Expression],
+        kwargs: dict[str, Expression],
+        scope: Scope,
+        expr_type: type = UNKNOWN_TYPE,
+    ):
         if not scope.is_name_in_use(function_name):
             raise AssertionError(f"Cannot call unknown function '{function_name}'")
         self.function_name = function_name
@@ -729,10 +755,12 @@ class FunctionCall(Expression):
         self.kwargs = kwargs
         if expr_type is UNKNOWN_TYPE:
             # Try to find out automatically
-            expr_type = scope.get_name_properties(function_name).get(PROPERTY_RETURN_TYPE, expr_type)
+            looked_up_return_type = scope.get_name_properties(function_name).get(PROPERTY_RETURN_TYPE, expr_type)
+            assert isinstance(looked_up_return_type, type)
+            expr_type = looked_up_return_type
         self.type = expr_type
 
-    def as_ast(self):
+    def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.function_name, allow_builtin=True):
             raise AssertionError(f"Expected {self.function_name} to be a valid Python identifier or builtin")
 
@@ -759,14 +787,14 @@ class FunctionCall(Expression):
             # is necessary).
             kwarg_pairs = list(sorted(self.kwargs.items()))
             kwarg_names, kwarg_values = [k for k, _ in kwarg_pairs], [v for _, v in kwarg_pairs]
-            return ast.Call(
-                func=ast.Name(id=self.function_name, ctx=ast.Load(), **DEFAULT_AST_ARGS),
+            return py_ast.Call(
+                func=py_ast.Name(id=self.function_name, ctx=py_ast.Load(), **DEFAULT_AST_ARGS),
                 args=[arg.as_ast() for arg in self.args],
                 keywords=[
-                    ast.keyword(
+                    py_ast.keyword(
                         arg=None,
-                        value=ast.Dict(
-                            keys=[ast.Constant(k, kind=None, **DEFAULT_AST_ARGS) for k in kwarg_names],
+                        value=py_ast.Dict(
+                            keys=[py_ast.Constant(k, kind=None, **DEFAULT_AST_ARGS) for k in kwarg_names],
                             values=[v.as_ast() for v in kwarg_values],
                             **DEFAULT_AST_ARGS,
                         ),
@@ -777,11 +805,12 @@ class FunctionCall(Expression):
             )
 
         # Normal `my_function(foo=bar)` syntax
-        return ast.Call(
-            func=ast.Name(id=self.function_name, ctx=ast.Load(), **DEFAULT_AST_ARGS),
+        return py_ast.Call(
+            func=py_ast.Name(id=self.function_name, ctx=py_ast.Load(), **DEFAULT_AST_ARGS),
             args=[arg.as_ast() for arg in self.args],
             keywords=[
-                ast.keyword(arg=name, value=value.as_ast(), **DEFAULT_AST_ARGS) for name, value in self.kwargs.items()
+                py_ast.keyword(arg=name, value=value.as_ast(), **DEFAULT_AST_ARGS)
+                for name, value in self.kwargs.items()
             ],
             **DEFAULT_AST_ARGS,
         )
@@ -793,21 +822,21 @@ class FunctionCall(Expression):
 class MethodCall(Expression):
     child_elements = ["obj", "args"]
 
-    def __init__(self, obj, method_name, args, expr_type=UNKNOWN_TYPE):
+    def __init__(self, obj: Expression, method_name: str, args: Sequence[Expression], expr_type: type = UNKNOWN_TYPE):
         # We can't check method_name because we don't know the type of obj yet.
         self.obj = obj
         self.method_name = method_name
         self.args = args
         self.type = expr_type
 
-    def as_ast(self):
+    def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.method_name, for_method=True):
             raise AssertionError(f"Expected {self.method_name} to be a valid Python identifier")
-        return ast.Call(
-            func=ast.Attribute(
+        return py_ast.Call(
+            func=py_ast.Attribute(
                 value=self.obj.as_ast(),
                 attr=self.method_name,
-                ctx=ast.Load(),
+                ctx=py_ast.Load(),
                 **DEFAULT_AST_ARGS,
             ),
             args=[arg.as_ast() for arg in self.args],
@@ -822,16 +851,16 @@ class MethodCall(Expression):
 class DictLookup(Expression):
     child_elements = ["lookup_obj", "lookup_arg"]
 
-    def __init__(self, lookup_obj, lookup_arg, expr_type=UNKNOWN_TYPE):
+    def __init__(self, lookup_obj: Expression, lookup_arg: Expression, expr_type: type = UNKNOWN_TYPE):
         self.lookup_obj = lookup_obj
         self.lookup_arg = lookup_arg
         self.type = expr_type
 
-    def as_ast(self):
-        return ast.Subscript(
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Subscript(
             value=self.lookup_obj.as_ast(),
-            slice=ast.subscript_slice_object(self.lookup_arg.as_ast()),
-            ctx=ast.Load(),
+            slice=py_ast.subscript_slice_object(self.lookup_arg.as_ast()),
+            ctx=py_ast.Load(),
             **DEFAULT_AST_ARGS,
         )
 
@@ -842,14 +871,14 @@ ObjectCreation = FunctionCall
 class NoneExpr(Expression):
     type = type(None)
 
-    def as_ast(self):
-        return ast.Constant(value=None, **DEFAULT_AST_ARGS)
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Constant(value=None, **DEFAULT_AST_ARGS)
 
 
 class BinaryOperator(Expression):
     child_elements = ["left", "right"]
 
-    def __init__(self, left, right):
+    def __init__(self, left: Expression, right: Expression):
         self.left = left
         self.right = right
 
@@ -857,11 +886,11 @@ class BinaryOperator(Expression):
 class Equals(BinaryOperator):
     type = bool
 
-    def as_ast(self):
-        return ast.Compare(
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.Compare(
             left=self.left.as_ast(),
             comparators=[self.right.as_ast()],
-            ops=[ast.Eq()],
+            ops=[py_ast.Eq()],
             **DEFAULT_AST_ARGS,
         )
 
@@ -870,8 +899,8 @@ class BoolOp(BinaryOperator):
     type = bool
     op = NotImplemented
 
-    def as_ast(self):
-        return ast.BoolOp(
+    def as_ast(self) -> py_ast.expr:
+        return py_ast.BoolOp(
             op=self.op(),
             values=[self.left.as_ast(), self.right.as_ast()],
             **DEFAULT_AST_ARGS,
@@ -879,18 +908,18 @@ class BoolOp(BinaryOperator):
 
 
 class Or(BoolOp):
-    op = ast.Or
+    op = py_ast.Or
 
 
-def traverse(ast_node: ast.AST, func: Callable[[ast.AST], None]):
+def traverse(ast_node: py_ast.AST, func: Callable[[py_ast.AST], None]):
     """
     Apply 'func' to ast_node (which is `ast.*` object)
     """
-    for node in ast.walk(ast_node):
+    for node in py_ast.walk(ast_node):
         func(node)
 
 
-def simplify(codegen_ast, simplifier):
+def simplify(codegen_ast: CodeGenAst, simplifier: Callable[[CodeGenAst, list[bool]], CodeGenAst]):
     changes = [True]
 
     # Wrap `simplifier` (which takes additional `changes` arg)
@@ -905,13 +934,13 @@ def simplify(codegen_ast, simplifier):
 
 
 def rewriting_traverse(
-    node: PythonAstType | list | tuple | dict,
-    func: Callable[[PythonAstType], PythonAstType],
+    node: CodeGenAstType | list | tuple | dict,
+    func: Callable[[CodeGenAstType], CodeGenAstType],
 ):
     """
-    Apply 'func' to node and all sub PythonAst nodes
+    Apply 'func' to node and all sub CodeGenAst nodes
     """
-    if isinstance(node, (PythonAst, PythonAstList)):
+    if isinstance(node, (CodeGenAst, CodeGenAstList)):
         new_node = func(node)
         if new_node is not node:
             morph_into(node, new_node)
@@ -934,9 +963,9 @@ def morph_into(item: object, new_item: object) -> None:
     item.__dict__ = new_item.__dict__
 
 
-def empty_If():
+def empty_If() -> py_ast.If:
     """
     Create an empty If ast node. The `test` attribute
     must be added later.
     """
-    return ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)  # type: ignore[reportArgumentType]
+    return py_ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)  # type: ignore[reportArgumentType]

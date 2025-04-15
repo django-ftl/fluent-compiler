@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-RETURN_TYPES = {
+RETURN_TYPES: dict[str, type] = {
     "handle_argument": object,
     "handle_output": str,
     "FluentReferenceError": FluentReferenceError,
