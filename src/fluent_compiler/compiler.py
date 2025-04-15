@@ -987,13 +987,13 @@ def compile_expr_variable_reference(
                 {},
                 block.scope,
             )
+        if block.scope.has_assignment(arg_tmp_name):  # already assigned to this, can re-use
+            block.add_assignment(arg_handled_tmp_name, handle_argument_func_call)
+            return block.scope.variable(arg_handled_tmp_name)
 
-    if block.scope.has_assignment(arg_tmp_name):  # already assigned to this, can re-use
-        if not wrap_with_handle_argument:
+    else:
+        if block.scope.has_assignment(arg_tmp_name):  # already assigned to this, can re-use
             return block.scope.variable(arg_tmp_name)
-
-        block.add_assignment(arg_handled_tmp_name, handle_argument_func_call)
-        return block.scope.variable(arg_handled_tmp_name)
 
     # Add try/except/else to lookup variable.
     try_except = codegen.Try(
