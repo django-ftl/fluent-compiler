@@ -3,6 +3,7 @@ Utilities for doing Python code generation
 """
 from __future__ import annotations
 
+import decimal
 import keyword
 import platform
 import re
@@ -560,7 +561,7 @@ class String(Expression):
 
     type = str
 
-    def __init__(self, string_value):
+    def __init__(self, string_value: str):
         self.string_value = string_value
 
     def as_ast(self) -> ast.expr:
@@ -580,7 +581,7 @@ class String(Expression):
 class Number(Expression):
     child_elements = []
 
-    def __init__(self, number):
+    def __init__(self, number: int | float | decimal.Decimal):
         self.number = number
         self.type = type(number)
 

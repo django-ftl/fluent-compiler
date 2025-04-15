@@ -6,7 +6,7 @@ from attr import dataclass
 from typing_extensions import Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from .codegen import Expression, PythonAst
+    from .codegen import Expression
     from .compiler import CompilerEnvironment
 
 from . import ast_compat as ast
@@ -211,7 +211,7 @@ class RegisteredEscaper:
 
 
 class EscaperJoin(codegen.StringJoinBase):
-    def __init__(self, parts: Sequence[PythonAst], escaper: RegisteredEscaper, scope: codegen.Scope):
+    def __init__(self, parts: Sequence[Expression], escaper: RegisteredEscaper, scope: codegen.Scope):
         super().__init__(parts)
         self.type = escaper.output_type
         self.escaper = escaper
@@ -242,17 +242,18 @@ class EscaperJoin(codegen.StringJoinBase):
             if len(new_parts) > 0:
                 last_part = new_parts[-1]
                 # Merge string literals wrapped in mark_escaped calls
-                if all(
-                    (
-                        isinstance(p, codegen.FunctionCall)
-                        and p.function_name == escaper.mark_escaped_name()
-                        and isinstance(p.args[0], codegen.String)
-                    )
-                    for p in [last_part, part]
+                if (
+                    isinstance(last_part, codegen.FunctionCall)
+                    and last_part.function_name == escaper.mark_escaped_name()
+                    and (isinstance(last_part_args0 := last_part.args[0], codegen.String))
+                ) and (
+                    isinstance(part, codegen.FunctionCall)
+                    and part.function_name == escaper.mark_escaped_name()
+                    and isinstance(part_args0 := part.args[0], codegen.String)
                 ):
                     new_parts[-1] = codegen.FunctionCall(
                         last_part.function_name,
-                        [codegen.String(last_part.args[0].string_value + part.args[0].string_value)],
+                        [codegen.String(last_part_args0.string_value + part_args0.string_value)],
                         {},
                         scope,
                     )
