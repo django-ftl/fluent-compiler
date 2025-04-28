@@ -8,17 +8,13 @@ import keyword
 import platform
 import re
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Iterable, Protocol, Sequence, Union, runtime_checkable
+from typing import Callable, Iterable, Protocol, Sequence, Union, runtime_checkable
 
 from . import ast_compat as py_ast
 from .ast_compat import DEFAULT_AST_ARGS, DEFAULT_AST_ARGS_ADD, DEFAULT_AST_ARGS_ARGUMENTS, DEFAULT_AST_ARGS_MODULE
 from .compat import TypeAlias
+from .source import FtlSource
 from .utils import allowable_keyword_arg_name, allowable_name
-
-if TYPE_CHECKING:
-    # TODO move FtlSource to its own module
-    from .compiler import FtlSource
-
 
 # This module provides simple utilities for building up Python source code. It
 # implements only what is really needed by compiler.py, with a number of aims

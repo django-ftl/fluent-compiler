@@ -16,6 +16,8 @@ from fluent.syntax import FluentParser
 from fluent.syntax import ast as fl_ast
 from typing_extensions import TypeGuard
 
+from fluent_compiler.source import FtlSource
+
 from . import ast_compat as py_ast
 from . import codegen, runtime
 from .builtins import BUILTINS
@@ -150,18 +152,6 @@ class CompilerEnvironment:
         if self.current.escaper.use_isolating is None:
             return self.use_isolating
         return self.current.escaper.use_isolating
-
-
-class FtlSource:
-    """
-    Object used to specify the origin of a chunk of FTL
-    """
-
-    def __init__(self, ast_node: fl_ast.Attribute | fl_ast.Message, ftl_resource: FtlResource):
-        self.ast_node = ast_node
-        self.ftl_resource = ftl_resource
-        self.filename = self.ftl_resource.filename
-        self.row, self.column = span_to_position(ast_node.span, ftl_resource.text)
 
 
 @dataclass
