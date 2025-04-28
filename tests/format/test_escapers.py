@@ -1,8 +1,8 @@
 import operator
-import unittest
 from functools import reduce
 from typing import Sequence
 
+import pytest
 from bs4 import BeautifulSoup
 from markdown import markdown
 from markupsafe import Markup, escape
@@ -11,6 +11,11 @@ from fluent_compiler.bundle import FluentBundle
 from fluent_compiler.escapers import IsEscaper
 
 from ..utils import dedent_ftl
+
+
+def assertTypeAndValueEqual(val1, val2):
+    assert val1 == val2
+    assert type(val1) is type(val2)
 
 
 # An escaper for MarkupSafe with instrumentation so we can check behaviour
@@ -99,369 +104,396 @@ class MarkdownEscaper:
         return reduce(operator.add, parts, empty_markdown)
 
 
-class TestHtmlEscaping(unittest.TestCase):
-    def setUp(self):
-        escaper: IsEscaper[Markup] = HtmlEscaper()
+@pytest.fixture(scope="session")
+def html_escaping_bundle() -> FluentBundle:
+    escaper: IsEscaper[Markup] = HtmlEscaper()
 
-        # A function that outputs '> ' that needs to be escaped. Part of the
-        # point of this is to ensure that escaping is being done at the correct
-        # point - it is no good to escape string input when it enters, it has to
-        # be done at the end of the formatting process.
-        def QUOTE(arg):
-            return "\n" + "\n".join(f"> {line}" for line in arg.split("\n"))
+    # A function that outputs '> ' that needs to be escaped. Part of the
+    # point of this is to ensure that escaping is being done at the correct
+    # point - it is no good to escape string input when it enters, it has to
+    # be done at the end of the formatting process.
+    def QUOTE(arg):
+        return "\n" + "\n".join(f"> {line}" for line in arg.split("\n"))
 
-        self.html_escaping_bundle = FluentBundle.from_string(
-            "en-US",
-            dedent_ftl(
-                """
-            not-html-message = x < y
-
-            simple-html =  This is <b>great</b>.
-
-            argument-html = This <b>thing</b> is called { $arg }.
-
-            -term-html = <b>Jack &amp; Jill</b>
-
-            -term-plain = Jack & Jill
-
-            references-html-term-html = { -term-html } are <b>great!</b>
-
-            references-plain-term-html = { -term-plain } are <b>great!</b>
-
-            references-html-term-plain = { -term-html } are great!
-
-            attribute-argument-html = A <a href="{ $url }">link to { $place }</a>
-
-            compound-message-html = A message about { $arg }. { argument-html }
-
-            function-html = You said: { QUOTE($text) }
-
-            parent-plain = Some stuff
-                 .attr-html = Some <b>HTML</b> stuff
-                 .attr-plain = This & That
-
-            references-html-message-plain = Plain. { simple-html }
-
-            references-html-message-attr-plain = Plain. { parent-plain.attr-html }
-
-            references-html-message-attr-html = <b>HTML</b>. { parent-plain.attr-html }
-
-            references-plain-message-attr-html = <b>HTML</b>. { parent-plain.attr-plain }
-
-            -brand-plain = { $variant ->
-                 [short] A&B
-                *[long]  A & B
-             }
-
-            -brand-html = { $variant ->
-                 [superscript] CoolBrand<sup>2</sup>
-                *[normal]      CoolBrand2
-             }
-
-            references-html-variant-plain = { -brand-html(variant: "superscript") } is cool
-
-            references-html-variant-html = { -brand-html(variant: "superscript") } is cool
-
-            references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
-
-            references-plain-variant-html = { -brand-plain(variant: "short") } is awesome
+    return FluentBundle.from_string(
+        "en-US",
+        dedent_ftl(
             """
-            ),
-            use_isolating=True,
-            functions={"QUOTE": QUOTE},
-            escapers=[escaper],
-        )
+        not-html-message = x < y
 
-    def assertTypeAndValueEqual(self, val1, val2):
-        self.assertEqual(val1, val2)
-        self.assertEqual(type(val1), type(val2))
+        simple-html =  This is <b>great</b>.
 
-    def test_select_false(self):
-        val, errs = self.html_escaping_bundle.format("not-html-message")
-        self.assertTypeAndValueEqual(val, "x < y")
+        argument-html = This <b>thing</b> is called { $arg }.
 
-    def test_simple(self):
-        val, errs = self.html_escaping_bundle.format("simple-html")
-        self.assertTypeAndValueEqual(val, Markup("This is <b>great</b>."))
-        self.assertEqual(errs, [])
+        -term-html = <b>Jack &amp; Jill</b>
 
-    def test_argument_is_escaped(self):
-        val, errs = self.html_escaping_bundle.format("argument-html", {"arg": "Jack & Jill"})
-        self.assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called Jack &amp; Jill."))
-        self.assertEqual(errs, [])
+        -term-plain = Jack & Jill
 
-    def test_argument_already_escaped(self):
-        val, errs = self.html_escaping_bundle.format("argument-html", {"arg": Markup("<b>Jack</b>")})
-        self.assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called <b>Jack</b>."))
-        self.assertEqual(errs, [])
+        references-html-term-html = { -term-html } are <b>great!</b>
 
-    def test_included_html_term(self):
-        val, errs = self.html_escaping_bundle.format("references-html-term-html")
-        self.assertTypeAndValueEqual(val, Markup("<b>Jack &amp; Jill</b> are <b>great!</b>"))
-        self.assertEqual(errs, [])
+        references-plain-term-html = { -term-plain } are <b>great!</b>
 
-    def test_included_plain_term(self):
-        val, errs = self.html_escaping_bundle.format("references-plain-term-html")
-        self.assertTypeAndValueEqual(val, Markup("Jack &amp; Jill are <b>great!</b>"))
-        self.assertEqual(errs, [])
+        references-html-term-plain = { -term-html } are great!
 
-    def test_included_html_term_from_plain(self):
-        val, errs = self.html_escaping_bundle.format("references-html-term-plain")
-        self.assertTypeAndValueEqual(val, "\u2068-term-html\u2069 are great!")
-        self.assertEqual(type(errs[0]), TypeError)
+        attribute-argument-html = A <a href="{ $url }">link to { $place }</a>
 
-    def test_compound_message(self):
-        val, errs = self.html_escaping_bundle.format("compound-message-html", {"arg": "Jack & Jill"})
-        self.assertTypeAndValueEqual(
-            val,
-            Markup("A message about Jack &amp; Jill. " "This <b>thing</b> is called Jack &amp; Jill."),
-        )
-        self.assertEqual(errs, [])
+        compound-message-html = A message about { $arg }. { argument-html }
 
-    def test_function(self):
-        val, errs = self.html_escaping_bundle.format("function-html", {"text": "Jack & Jill"})
-        self.assertTypeAndValueEqual(val, Markup("You said: \n&gt; Jack &amp; Jill"))
-        self.assertEqual(errs, [])
+        function-html = You said: { QUOTE($text) }
 
-    def test_plain_parent(self):
-        val, errs = self.html_escaping_bundle.format("parent-plain")
-        self.assertTypeAndValueEqual(val, "Some stuff")
-        self.assertEqual(errs, [])
+        parent-plain = Some stuff
+             .attr-html = Some <b>HTML</b> stuff
+             .attr-plain = This & That
 
-    def test_html_attribute(self):
-        val, errs = self.html_escaping_bundle.format("parent-plain.attr-html")
-        self.assertTypeAndValueEqual(val, Markup("Some <b>HTML</b> stuff"))
-        self.assertEqual(errs, [])
+        references-html-message-plain = Plain. { simple-html }
 
-    def test_html_message_reference_from_plain(self):
-        val, errs = self.html_escaping_bundle.format("references-html-message-plain")
-        self.assertTypeAndValueEqual(val, "Plain. \u2068simple-html\u2069")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
+        references-html-message-attr-plain = Plain. { parent-plain.attr-html }
 
-    # Message attr references
-    def test_html_message_attr_reference_from_plain(self):
-        val, errs = self.html_escaping_bundle.format("references-html-message-attr-plain")
-        self.assertTypeAndValueEqual(val, "Plain. \u2068parent-plain.attr-html\u2069")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
+        references-html-message-attr-html = <b>HTML</b>. { parent-plain.attr-html }
 
-    def test_html_message_attr_reference_from_html(self):
-        val, errs = self.html_escaping_bundle.format("references-html-message-attr-html")
-        self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. Some <b>HTML</b> stuff"))
-        self.assertEqual(errs, [])
+        references-plain-message-attr-html = <b>HTML</b>. { parent-plain.attr-plain }
 
-    def test_plain_message_attr_reference_from_html(self):
-        val, errs = self.html_escaping_bundle.format("references-plain-message-attr-html")
-        self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. This &amp; That"))
-        self.assertEqual(errs, [])
+        -brand-plain = { $variant ->
+             [short] A&B
+            *[long]  A & B
+         }
 
-    # Term variant references
-    def test_html_variant_from_plain(self):
-        val, errs = self.html_escaping_bundle.format("references-html-variant-plain")
-        self.assertTypeAndValueEqual(val, "\u2068-brand-html\u2069 is cool")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
+        -brand-html = { $variant ->
+             [superscript] CoolBrand<sup>2</sup>
+            *[normal]      CoolBrand2
+         }
 
-    def test_html_variant_from_html(self):
-        val, errs = self.html_escaping_bundle.format("references-html-variant-html")
-        self.assertTypeAndValueEqual(val, Markup("CoolBrand<sup>2</sup> is cool"))
-        self.assertEqual(errs, [])
+        references-html-variant-plain = { -brand-html(variant: "superscript") } is cool
 
-    def test_plain_variant_from_plain(self):
-        val, errs = self.html_escaping_bundle.format("references-plain-variant-plain")
-        self.assertTypeAndValueEqual(val, "\u2068A&B\u2069 is awesome")
-        self.assertEqual(errs, [])
+        references-html-variant-html = { -brand-html(variant: "superscript") } is cool
 
-    def test_plain_variant_from_html(self):
-        val, errs = self.html_escaping_bundle.format("references-plain-variant-html")
-        self.assertTypeAndValueEqual(val, Markup("A&amp;B is awesome"))
-        self.assertEqual(errs, [])
+        references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
 
-    def test_use_isolating(self):
-        val, errs = self.html_escaping_bundle.format(
-            "attribute-argument-html", {"url": "http://example.com", "place": "A Place"}
-        )
-        self.assertTypeAndValueEqual(val, Markup('A <a href="http://example.com">link to A Place</a>'))
+        references-plain-variant-html = { -brand-plain(variant: "short") } is awesome
+        """
+        ),
+        use_isolating=True,
+        functions={"QUOTE": QUOTE},
+        escapers=[escaper],
+    )
 
 
-class TestMarkdownEscaping(unittest.TestCase):
-    maxDiff = None
+def test_html_select_false(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("not-html-message")
+    assertTypeAndValueEqual(val, "x < y")
 
-    def setUp(self):
-        escaper: IsEscaper[Markdown] = MarkdownEscaper()
 
-        # This QUOTE function outputs Markdown that should not be removed.
-        def QUOTE(arg):
-            return Markdown("\n" + "\n".join(f"> {line}" for line in arg.split("\n")))
+def test_html_simple(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("simple-html")
+    assertTypeAndValueEqual(val, Markup("This is <b>great</b>."))
+    assert errs == []
 
-        self.markdown_escaping_bundle = FluentBundle.from_string(
-            "en-US",
-            dedent_ftl(
-                """
-            not-md-message = **some text**
 
-            simple-md =  This is **great**
+def test_html_argument_is_escaped(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("argument-html", {"arg": "Jack & Jill"})
+    assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called Jack &amp; Jill."))
+    assert errs == []
 
-            argument-md = This **thing** is called { $arg }.
 
-            -term-md = **Jack** & __Jill__
+def test_html_argument_already_escaped(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("argument-html", {"arg": Markup("<b>Jack</b>")})
+    assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called <b>Jack</b>."))
+    assert errs == []
 
-            -term-plain = **Jack & Jill**
 
-            term-md-ref-md = { -term-md } are **great!**
+def test_included_html_term(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-term-html")
+    assertTypeAndValueEqual(val, Markup("<b>Jack &amp; Jill</b> are <b>great!</b>"))
+    assert errs == []
 
-            term-plain-ref-md = { -term-plain } are **great!**
 
-            embedded-argument-md = A [link to { $place }]({ $url })
+def test_included_plain_term(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-plain-term-html")
+    assertTypeAndValueEqual(val, Markup("Jack &amp; Jill are <b>great!</b>"))
+    assert errs == []
 
-            compound-message-md = A message about { $arg }. { argument-md }
 
-            function-md = You said: { QUOTE($text) }
+def test_included_html_term_from_plain(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-term-plain")
+    assertTypeAndValueEqual(val, "\u2068-term-html\u2069 are great!")
+    assert type(errs[0]) is TypeError
 
-            parent-plain = Some stuff
-                 .attr-md = Some **Markdown** stuff
-                 .attr-plain = This and **That**
 
-            references-md-message-plain = Plain. { simple-md }
+def test_html_compound_message(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("compound-message-html", {"arg": "Jack & Jill"})
+    assertTypeAndValueEqual(
+        val,
+        Markup("A message about Jack &amp; Jill. " "This <b>thing</b> is called Jack &amp; Jill."),
+    )
+    assert errs == []
 
-            references-md-attr-plain = Plain. { parent-plain.attr-md }
 
-            references-md-attr-md = **Markdown**. { parent-plain.attr-md }
+def test_html_function(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("function-html", {"text": "Jack & Jill"})
+    assertTypeAndValueEqual(val, Markup("You said: \n&gt; Jack &amp; Jill"))
+    assert errs == []
 
-            references-plain-attr-md = **Markdown**. { parent-plain.attr-plain }
 
-            -brand-plain = { $variant ->
-                 [short] *A&B*
-                *[long]  *A & B*
-             }
+def test_html_plain_parent(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("parent-plain")
+    assertTypeAndValueEqual(val, "Some stuff")
+    assert errs == []
 
-            -brand-md = { $variant ->
-                 [bolded]  CoolBrand **2**
-                *[normal]  CoolBrand2
-             }
 
-            references-md-variant-plain = { -brand-md(variant: "bolded") } is cool
+def test_html_attribute(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("parent-plain.attr-html")
+    assertTypeAndValueEqual(val, Markup("Some <b>HTML</b> stuff"))
+    assert errs == []
 
-            references-md-variant-md = { -brand-md(variant: "bolded") } is cool
 
-            references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
+def test_html_message_reference_from_plain(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-message-plain")
+    assertTypeAndValueEqual(val, "Plain. \u2068simple-html\u2069")
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
 
-            references-plain-variant-md = { -brand-plain(variant: "short") } is awesome
+
+# Message attr references
+def test_html_message_attr_reference_from_plain(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-message-attr-plain")
+    assertTypeAndValueEqual(val, "Plain. \u2068parent-plain.attr-html\u2069")
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
+
+
+def test_html_message_attr_reference_from_html(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-message-attr-html")
+    assertTypeAndValueEqual(val, Markup("<b>HTML</b>. Some <b>HTML</b> stuff"))
+    assert errs == []
+
+
+def test_plain_message_attr_reference_from_html(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-plain-message-attr-html")
+    assertTypeAndValueEqual(val, Markup("<b>HTML</b>. This &amp; That"))
+    assert errs == []
+
+
+# Term variant references
+def test_html_variant_from_plain(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-variant-plain")
+    assertTypeAndValueEqual(val, "\u2068-brand-html\u2069 is cool")
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
+
+
+def test_html_variant_from_html(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-html-variant-html")
+    assertTypeAndValueEqual(val, Markup("CoolBrand<sup>2</sup> is cool"))
+    assert errs == []
+
+
+def test_html_plain_variant_from_plain(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-plain-variant-plain")
+    assertTypeAndValueEqual(val, "\u2068A&B\u2069 is awesome")
+    assert errs == []
+
+
+def test_plain_variant_from_html(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format("references-plain-variant-html")
+    assertTypeAndValueEqual(val, Markup("A&amp;B is awesome"))
+    assert errs == []
+
+
+def test_use_isolating(html_escaping_bundle: FluentBundle):
+    val, errs = html_escaping_bundle.format(
+        "attribute-argument-html", {"url": "http://example.com", "place": "A Place"}
+    )
+    assertTypeAndValueEqual(val, Markup('A <a href="http://example.com">link to A Place</a>'))
+
+
+@pytest.fixture(scope="session")
+def markdown_escaping_bundle() -> FluentBundle:
+    escaper: IsEscaper[Markdown] = MarkdownEscaper()
+
+    # This QUOTE function outputs Markdown that should not be removed.
+    def QUOTE(arg):
+        return Markdown("\n" + "\n".join(f"> {line}" for line in arg.split("\n")))
+
+    return FluentBundle.from_string(
+        "en-US",
+        dedent_ftl(
             """
-            ),
-            use_isolating=False,
-            functions={"QUOTE": QUOTE},
-            escapers=[escaper],
-        )
+        not-md-message = **some text**
 
-    def test_strip_markdown(self):
-        self.assertEqual(
-            StrippedMarkdown("**Some bolded** and __italic__ text"),
-            Markdown("Some bolded and italic text"),
-        )
-        self.assertEqual(
-            StrippedMarkdown(
-                """
+        simple-md =  This is **great**
+
+        argument-md = This **thing** is called { $arg }.
+
+        -term-md = **Jack** & __Jill__
+
+        -term-plain = **Jack & Jill**
+
+        term-md-ref-md = { -term-md } are **great!**
+
+        term-plain-ref-md = { -term-plain } are **great!**
+
+        embedded-argument-md = A [link to { $place }]({ $url })
+
+        compound-message-md = A message about { $arg }. { argument-md }
+
+        function-md = You said: { QUOTE($text) }
+
+        parent-plain = Some stuff
+             .attr-md = Some **Markdown** stuff
+             .attr-plain = This and **That**
+
+        references-md-message-plain = Plain. { simple-md }
+
+        references-md-attr-plain = Plain. { parent-plain.attr-md }
+
+        references-md-attr-md = **Markdown**. { parent-plain.attr-md }
+
+        references-plain-attr-md = **Markdown**. { parent-plain.attr-plain }
+
+        -brand-plain = { $variant ->
+             [short] *A&B*
+            *[long]  *A & B*
+         }
+
+        -brand-md = { $variant ->
+             [bolded]  CoolBrand **2**
+            *[normal]  CoolBrand2
+         }
+
+        references-md-variant-plain = { -brand-md(variant: "bolded") } is cool
+
+        references-md-variant-md = { -brand-md(variant: "bolded") } is cool
+
+        references-plain-variant-plain = { -brand-plain(variant: "short") } is awesome
+
+        references-plain-variant-md = { -brand-plain(variant: "short") } is awesome
+        """
+        ),
+        use_isolating=False,
+        functions={"QUOTE": QUOTE},
+        escapers=[escaper],
+    )
+
+
+def test_strip_markdown():
+    assert StrippedMarkdown("**Some bolded** and __italic__ text") == Markdown("Some bolded and italic text")
+    assert (
+        StrippedMarkdown(
+            """
 
 > A quotation
 > about something
         """
-            ),
-            Markdown("\nA quotation\nabout something\n"),
         )
+        == Markdown("\nA quotation\nabout something\n")
+    )
 
-    def test_select_false(self):
-        val, errs = self.markdown_escaping_bundle.format("not-md-message")
-        self.assertEqual(val, "**some text**")
 
-    def test_simple(self):
-        val, errs = self.markdown_escaping_bundle.format("simple-md")
-        self.assertEqual(val, Markdown("This is **great**"))
-        self.assertEqual(errs, [])
+def test_md_select_false(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("not-md-message")
+    assert val == "**some text**"
 
-    def test_argument_is_escaped(self):
-        val, errs = self.markdown_escaping_bundle.format("argument-md", {"arg": "**Jack**"})
-        self.assertEqual(val, Markdown("This **thing** is called Jack."))
-        self.assertEqual(errs, [])
 
-    def test_argument_already_escaped(self):
-        val, errs = self.markdown_escaping_bundle.format("argument-md", {"arg": Markdown("**Jack**")})
-        self.assertEqual(val, Markdown("This **thing** is called **Jack**."))
-        self.assertEqual(errs, [])
+def test_md_simple(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("simple-md")
+    assert val == Markdown("This is **great**")
+    assert errs == []
 
-    def test_included_md(self):
-        val, errs = self.markdown_escaping_bundle.format("term-md-ref-md")
-        self.assertEqual(val, Markdown("**Jack** & __Jill__ are **great!**"))
-        self.assertEqual(errs, [])
 
-    def test_included_plain(self):
-        val, errs = self.markdown_escaping_bundle.format("term-plain-ref-md")
-        self.assertEqual(val, Markdown("Jack & Jill are **great!**"))
-        self.assertEqual(errs, [])
+def test_md_argument_is_escaped(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("argument-md", {"arg": "**Jack**"})
+    assert val == Markdown("This **thing** is called Jack.")
+    assert errs == []
 
-    def test_compound_message(self):
-        val, errs = self.markdown_escaping_bundle.format("compound-message-md", {"arg": "**Jack & Jill**"})
-        self.assertEqual(
-            val,
-            Markdown("A message about Jack & Jill. " "This **thing** is called Jack & Jill."),
-        )
-        self.assertEqual(errs, [])
 
-    def test_function(self):
-        val, errs = self.markdown_escaping_bundle.format("function-md", {"text": "Jack & Jill"})
-        self.assertEqual(val, Markdown("You said: \n> Jack & Jill"))
-        self.assertEqual(errs, [])
+def test_md_argument_already_escaped(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("argument-md", {"arg": Markdown("**Jack**")})
+    assert val == Markdown("This **thing** is called **Jack**.")
+    assert errs == []
 
-    def test_plain_parent(self):
-        val, errs = self.markdown_escaping_bundle.format("parent-plain")
-        self.assertEqual(val, "Some stuff")
-        self.assertEqual(errs, [])
 
-    def test_md_attribute(self):
-        val, errs = self.markdown_escaping_bundle.format("parent-plain.attr-md")
-        self.assertEqual(val, Markdown("Some **Markdown** stuff"))
-        self.assertEqual(errs, [])
+def test_included_md(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("term-md-ref-md")
+    assert val == Markdown("**Jack** & __Jill__ are **great!**")
+    assert errs == []
 
-    def test_md_message_reference_from_plain(self):
-        val, errs = self.markdown_escaping_bundle.format("references-md-message-plain")
-        self.assertEqual(val, "Plain. simple-md")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
 
-    def test_md_attr_reference_from_plain(self):
-        val, errs = self.markdown_escaping_bundle.format("references-md-attr-plain")
-        self.assertEqual(val, "Plain. parent-plain.attr-md")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
+def test_included_plain(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("term-plain-ref-md")
+    assert val == Markdown("Jack & Jill are **great!**")
+    assert errs == []
 
-    def test_md_reference_from_md(self):
-        val, errs = self.markdown_escaping_bundle.format("references-md-attr-md")
-        self.assertEqual(val, Markdown("**Markdown**. Some **Markdown** stuff"))
-        self.assertEqual(errs, [])
 
-    def test_plain_reference_from_md(self):
-        val, errs = self.markdown_escaping_bundle.format("references-plain-attr-md")
-        self.assertEqual(val, Markdown("**Markdown**. This and That"))
-        self.assertEqual(errs, [])
+def test_md_compound_message(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("compound-message-md", {"arg": "**Jack & Jill**"})
+    assert val == Markdown("A message about Jack & Jill. " "This **thing** is called Jack & Jill.")
+    assert errs == []
 
-    def test_md_variant_from_plain(self):
-        val, errs = self.markdown_escaping_bundle.format("references-md-variant-plain")
-        self.assertEqual(val, "-brand-md is cool")
-        self.assertEqual(len(errs), 1)
-        self.assertEqual(type(errs[0]), TypeError)
 
-    def test_md_variant_from_md(self):
-        val, errs = self.markdown_escaping_bundle.format("references-md-variant-md")
-        self.assertEqual(val, Markdown("CoolBrand **2** is cool"))
-        self.assertEqual(errs, [])
+def test_md_function(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("function-md", {"text": "Jack & Jill"})
+    assert val == Markdown("You said: \n> Jack & Jill")
+    assert errs == []
 
-    def test_plain_variant_from_plain(self):
-        val, errs = self.markdown_escaping_bundle.format("references-plain-variant-plain")
-        self.assertEqual(val, "*A&B* is awesome")
-        self.assertEqual(errs, [])
 
-    def test_plain_variant_from_md(self):
-        val, errs = self.markdown_escaping_bundle.format("references-plain-variant-md")
-        self.assertEqual(val, Markdown("A&B is awesome"))
-        self.assertEqual(errs, [])
+def test_md_plain_parent(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("parent-plain")
+    assert val == "Some stuff"
+    assert errs == []
+
+
+def test_md_attribute(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("parent-plain.attr-md")
+    assert val == Markdown("Some **Markdown** stuff")
+    assert errs == []
+
+
+def test_md_message_reference_from_plain(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-md-message-plain")
+    assert val == "Plain. simple-md"
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
+
+
+def test_md_attr_reference_from_plain(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-md-attr-plain")
+    assert val == "Plain. parent-plain.attr-md"
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
+
+
+def test_md_reference_from_md(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-md-attr-md")
+    assert val == Markdown("**Markdown**. Some **Markdown** stuff")
+    assert errs == []
+
+
+def test_plain_reference_from_md(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-plain-attr-md")
+    assert val == Markdown("**Markdown**. This and That")
+    assert errs == []
+
+
+def test_md_variant_from_plain(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-md-variant-plain")
+    assert val == "-brand-md is cool"
+    assert len(errs) == 1
+    assert type(errs[0]) is TypeError
+
+
+def test_md_variant_from_md(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-md-variant-md")
+    assert val == Markdown("CoolBrand **2** is cool")
+    assert errs == []
+
+
+def test_md_plain_variant_from_plain(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-plain-variant-plain")
+    assert val == "*A&B* is awesome"
+    assert errs == []
+
+
+def test_plain_variant_from_md(markdown_escaping_bundle: FluentBundle):
+    val, errs = markdown_escaping_bundle.format("references-plain-variant-md")
+    assert val == Markdown("A&B is awesome")
+    assert errs == []
