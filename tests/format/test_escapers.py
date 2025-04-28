@@ -217,6 +217,10 @@ def test_included_html_term_from_plain(html_escaping_bundle: FluentBundle):
     val, errs = html_escaping_bundle.format("references-html-term-plain")
     assertTypeAndValueEqual(val, "\u2068-term-html\u2069 are great!")
     assert type(errs[0]) is TypeError
+    assert (
+        errs[0].args[0]
+        == "Escaper HtmlEscaper for term -term-html cannot be used from calling context with null_escaper escaper"
+    )
 
 
 def test_html_compound_message(html_escaping_bundle: FluentBundle):
@@ -259,6 +263,10 @@ def test_html_message_attr_reference_from_plain(html_escaping_bundle: FluentBund
     assertTypeAndValueEqual(val, "Plain. \u2068parent-plain.attr-html\u2069")
     assert len(errs) == 1
     assert type(errs[0]) is TypeError
+    assert (
+        errs[0].args[0]
+        == "Escaper HtmlEscaper for message parent-plain.attr-html cannot be used from calling context with null_escaper escaper"
+    )
 
 
 def test_html_message_attr_reference_from_html(html_escaping_bundle: FluentBundle):
