@@ -30,8 +30,8 @@ from .errors import (
     FluentReferenceError,
 )
 from .escapers import (
-    Escaper,
     EscaperJoin,
+    IsEscaper,
     NullEscaper,
     RegisteredEscaper,
     escaper_for_message,
@@ -176,7 +176,7 @@ def compile_messages(
     resources: Sequence[FtlResource],
     use_isolating: bool = True,
     functions: dict[str, Callable] | None = None,
-    escapers: Sequence[Escaper] | None = None,
+    escapers: Sequence[IsEscaper] | None = None,
 ) -> CompiledFtl:
     """
     Compile a list of FtlResource to a Python module,
@@ -280,7 +280,7 @@ def messages_to_module(
     locale: babel.Locale,
     use_isolating: bool = True,
     functions: Mapping[str, Callable] | None = None,
-    escapers: Sequence[Escaper] | None = None,
+    escapers: Sequence[IsEscaper] | None = None,
 ) -> tuple:
     """
     Compile a set of {id: Message/Term objects} to a Python module, returning a tuple:

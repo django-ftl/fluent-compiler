@@ -40,7 +40,7 @@ class IsEscaper(Protocol[T]):
     name: Final[str]
     use_isolating: Final[bool | None]
 
-    def select(self, **kwargs: object) -> bool:
+    def select(self, message_id: str, **kwargs: object) -> bool:
         ...
 
     def escape(self, unescaped: str, /) -> T:
@@ -75,7 +75,7 @@ class NullEscaper:
         self.use_isolating = None
         self.output_type = str
 
-    def select(**kwargs: object) -> bool:
+    def select(self, message_id: str, **kwargs: object) -> bool:
         return True
 
     def escape(self, unescaped: str) -> str:
@@ -135,7 +135,7 @@ class RegisteredEscaper:
     functions are called in the compiler environment.
     """
 
-    def __init__(self, escaper: Escaper, compiler_env: CompilerEnvironment):
+    def __init__(self, escaper: IsEscaper, compiler_env: CompilerEnvironment):
         self._escaper = escaper
         self._compiler_env = compiler_env
 

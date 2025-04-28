@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence
 
-from fluent_compiler.escapers import Escaper
+from fluent_compiler.escapers import IsEscaper
 
 from .compiler import CompilationErrorItem, compile_messages
 from .resource import FtlResource
@@ -28,7 +28,7 @@ class FluentBundle:
         resources: Sequence[FtlResource],
         functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: Sequence[Escaper] | None = None,
+        escapers: Sequence[IsEscaper] | None = None,
     ):
         self.locale = locale
         compiled_ftl = compile_messages(
@@ -48,7 +48,7 @@ class FluentBundle:
         text: str,
         functions: dict[str, Callable] | None = None,
         use_isolating: bool = True,
-        escapers: Sequence[Escaper] | None = None,
+        escapers: Sequence[IsEscaper] | None = None,
     ) -> FluentBundle:
         return cls(
             locale,
