@@ -1,12 +1,14 @@
 import operator
 import unittest
 from functools import reduce
+from typing import Sequence
 
 from bs4 import BeautifulSoup
 from markdown import markdown
 from markupsafe import Markup, escape
 
 from fluent_compiler.bundle import FluentBundle
+from fluent_compiler.escapers import IsEscaper
 
 from ..utils import dedent_ftl
 
@@ -17,22 +19,19 @@ class HtmlEscaper:
     output_type = Markup
     use_isolating = False
 
-    def __init__(self, test_case):
-        self.test_case = test_case
-
-    def select(self, message_id: str, **hints):
+    def select(self, message_id: str, **kwargs: object):
         return message_id.endswith("-html")
 
-    def mark_escaped(self, escaped):
-        self.test_case.assertEqual(type(escaped), str)
+    def mark_escaped(self, escaped: str) -> Markup:
+        assert type(escaped) is str
         return Markup(escaped)
 
-    def escape(self, unescaped):
+    def escape(self, unescaped: str) -> Markup:
         return escape(unescaped)
 
-    def join(self, parts):
+    def join(self, parts: Sequence[Markup]) -> Markup:
         for p in parts:
-            self.test_case.assertEqual(type(p), Markup)
+            assert type(p) is Markup
         return Markup("").join(parts)
 
 
@@ -79,15 +78,13 @@ empty_markdown = Markdown("")
 class MarkdownEscaper:
     name = "MarkdownEscaper"
     output_type = Markdown
+    use_isolating = False
 
-    def __init__(self, test_case):
-        self.test_case = test_case
-
-    def select(self, message_id: str, **hints):
+    def select(self, message_id: str, **kwargs: object):
         return message_id.endswith("-md")
 
     def mark_escaped(self, escaped):
-        self.test_case.assertEqual(type(escaped), str)
+        assert type(escaped) is str
         return LiteralMarkdown(escaped)
 
     def escape(self, unescaped):
@@ -98,13 +95,13 @@ class MarkdownEscaper:
 
     def join(self, parts):
         for p in parts:
-            self.test_case.assertTrue(isinstance(p, Markdown))
+            assert isinstance(p, Markdown)
         return reduce(operator.add, parts, empty_markdown)
 
 
 class TestHtmlEscaping(unittest.TestCase):
     def setUp(self):
-        escaper = HtmlEscaper(self)
+        escaper: IsEscaper[Markup] = HtmlEscaper()
 
         # A function that outputs '> ' that needs to be escaped. Part of the
         # point of this is to ensure that escaping is being done at the correct
@@ -113,7 +110,7 @@ class TestHtmlEscaping(unittest.TestCase):
         def QUOTE(arg):
             return "\n" + "\n".join(f"> {line}" for line in arg.split("\n"))
 
-        self.bundle = FluentBundle.from_string(
+        self.html_escaping_bundle = FluentBundle.from_string(
             "en-US",
             dedent_ftl(
                 """
@@ -180,41 +177,41 @@ class TestHtmlEscaping(unittest.TestCase):
         self.assertEqual(type(val1), type(val2))
 
     def test_select_false(self):
-        val, errs = self.bundle.format("not-html-message")
+        val, errs = self.html_escaping_bundle.format("not-html-message")
         self.assertTypeAndValueEqual(val, "x < y")
 
     def test_simple(self):
-        val, errs = self.bundle.format("simple-html")
+        val, errs = self.html_escaping_bundle.format("simple-html")
         self.assertTypeAndValueEqual(val, Markup("This is <b>great</b>."))
         self.assertEqual(errs, [])
 
     def test_argument_is_escaped(self):
-        val, errs = self.bundle.format("argument-html", {"arg": "Jack & Jill"})
+        val, errs = self.html_escaping_bundle.format("argument-html", {"arg": "Jack & Jill"})
         self.assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called Jack &amp; Jill."))
         self.assertEqual(errs, [])
 
     def test_argument_already_escaped(self):
-        val, errs = self.bundle.format("argument-html", {"arg": Markup("<b>Jack</b>")})
+        val, errs = self.html_escaping_bundle.format("argument-html", {"arg": Markup("<b>Jack</b>")})
         self.assertTypeAndValueEqual(val, Markup("This <b>thing</b> is called <b>Jack</b>."))
         self.assertEqual(errs, [])
 
     def test_included_html_term(self):
-        val, errs = self.bundle.format("references-html-term-html")
+        val, errs = self.html_escaping_bundle.format("references-html-term-html")
         self.assertTypeAndValueEqual(val, Markup("<b>Jack &amp; Jill</b> are <b>great!</b>"))
         self.assertEqual(errs, [])
 
     def test_included_plain_term(self):
-        val, errs = self.bundle.format("references-plain-term-html")
+        val, errs = self.html_escaping_bundle.format("references-plain-term-html")
         self.assertTypeAndValueEqual(val, Markup("Jack &amp; Jill are <b>great!</b>"))
         self.assertEqual(errs, [])
 
     def test_included_html_term_from_plain(self):
-        val, errs = self.bundle.format("references-html-term-plain")
+        val, errs = self.html_escaping_bundle.format("references-html-term-plain")
         self.assertTypeAndValueEqual(val, "\u2068-term-html\u2069 are great!")
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_compound_message(self):
-        val, errs = self.bundle.format("compound-message-html", {"arg": "Jack & Jill"})
+        val, errs = self.html_escaping_bundle.format("compound-message-html", {"arg": "Jack & Jill"})
         self.assertTypeAndValueEqual(
             val,
             Markup("A message about Jack &amp; Jill. " "This <b>thing</b> is called Jack &amp; Jill."),
@@ -222,67 +219,69 @@ class TestHtmlEscaping(unittest.TestCase):
         self.assertEqual(errs, [])
 
     def test_function(self):
-        val, errs = self.bundle.format("function-html", {"text": "Jack & Jill"})
+        val, errs = self.html_escaping_bundle.format("function-html", {"text": "Jack & Jill"})
         self.assertTypeAndValueEqual(val, Markup("You said: \n&gt; Jack &amp; Jill"))
         self.assertEqual(errs, [])
 
     def test_plain_parent(self):
-        val, errs = self.bundle.format("parent-plain")
+        val, errs = self.html_escaping_bundle.format("parent-plain")
         self.assertTypeAndValueEqual(val, "Some stuff")
         self.assertEqual(errs, [])
 
     def test_html_attribute(self):
-        val, errs = self.bundle.format("parent-plain.attr-html")
+        val, errs = self.html_escaping_bundle.format("parent-plain.attr-html")
         self.assertTypeAndValueEqual(val, Markup("Some <b>HTML</b> stuff"))
         self.assertEqual(errs, [])
 
     def test_html_message_reference_from_plain(self):
-        val, errs = self.bundle.format("references-html-message-plain")
+        val, errs = self.html_escaping_bundle.format("references-html-message-plain")
         self.assertTypeAndValueEqual(val, "Plain. \u2068simple-html\u2069")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     # Message attr references
     def test_html_message_attr_reference_from_plain(self):
-        val, errs = self.bundle.format("references-html-message-attr-plain")
+        val, errs = self.html_escaping_bundle.format("references-html-message-attr-plain")
         self.assertTypeAndValueEqual(val, "Plain. \u2068parent-plain.attr-html\u2069")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_html_message_attr_reference_from_html(self):
-        val, errs = self.bundle.format("references-html-message-attr-html")
+        val, errs = self.html_escaping_bundle.format("references-html-message-attr-html")
         self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. Some <b>HTML</b> stuff"))
         self.assertEqual(errs, [])
 
     def test_plain_message_attr_reference_from_html(self):
-        val, errs = self.bundle.format("references-plain-message-attr-html")
+        val, errs = self.html_escaping_bundle.format("references-plain-message-attr-html")
         self.assertTypeAndValueEqual(val, Markup("<b>HTML</b>. This &amp; That"))
         self.assertEqual(errs, [])
 
     # Term variant references
     def test_html_variant_from_plain(self):
-        val, errs = self.bundle.format("references-html-variant-plain")
+        val, errs = self.html_escaping_bundle.format("references-html-variant-plain")
         self.assertTypeAndValueEqual(val, "\u2068-brand-html\u2069 is cool")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_html_variant_from_html(self):
-        val, errs = self.bundle.format("references-html-variant-html")
+        val, errs = self.html_escaping_bundle.format("references-html-variant-html")
         self.assertTypeAndValueEqual(val, Markup("CoolBrand<sup>2</sup> is cool"))
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_plain(self):
-        val, errs = self.bundle.format("references-plain-variant-plain")
+        val, errs = self.html_escaping_bundle.format("references-plain-variant-plain")
         self.assertTypeAndValueEqual(val, "\u2068A&B\u2069 is awesome")
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_html(self):
-        val, errs = self.bundle.format("references-plain-variant-html")
+        val, errs = self.html_escaping_bundle.format("references-plain-variant-html")
         self.assertTypeAndValueEqual(val, Markup("A&amp;B is awesome"))
         self.assertEqual(errs, [])
 
     def test_use_isolating(self):
-        val, errs = self.bundle.format("attribute-argument-html", {"url": "http://example.com", "place": "A Place"})
+        val, errs = self.html_escaping_bundle.format(
+            "attribute-argument-html", {"url": "http://example.com", "place": "A Place"}
+        )
         self.assertTypeAndValueEqual(val, Markup('A <a href="http://example.com">link to A Place</a>'))
 
 
@@ -290,13 +289,13 @@ class TestMarkdownEscaping(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        escaper = MarkdownEscaper(self)
+        escaper: IsEscaper[Markdown] = MarkdownEscaper()
 
         # This QUOTE function outputs Markdown that should not be removed.
         def QUOTE(arg):
             return Markdown("\n" + "\n".join(f"> {line}" for line in arg.split("\n")))
 
-        self.bundle = FluentBundle.from_string(
+        self.markdown_escaping_bundle = FluentBundle.from_string(
             "en-US",
             dedent_ftl(
                 """
@@ -373,36 +372,36 @@ class TestMarkdownEscaping(unittest.TestCase):
         )
 
     def test_select_false(self):
-        val, errs = self.bundle.format("not-md-message")
+        val, errs = self.markdown_escaping_bundle.format("not-md-message")
         self.assertEqual(val, "**some text**")
 
     def test_simple(self):
-        val, errs = self.bundle.format("simple-md")
+        val, errs = self.markdown_escaping_bundle.format("simple-md")
         self.assertEqual(val, Markdown("This is **great**"))
         self.assertEqual(errs, [])
 
     def test_argument_is_escaped(self):
-        val, errs = self.bundle.format("argument-md", {"arg": "**Jack**"})
+        val, errs = self.markdown_escaping_bundle.format("argument-md", {"arg": "**Jack**"})
         self.assertEqual(val, Markdown("This **thing** is called Jack."))
         self.assertEqual(errs, [])
 
     def test_argument_already_escaped(self):
-        val, errs = self.bundle.format("argument-md", {"arg": Markdown("**Jack**")})
+        val, errs = self.markdown_escaping_bundle.format("argument-md", {"arg": Markdown("**Jack**")})
         self.assertEqual(val, Markdown("This **thing** is called **Jack**."))
         self.assertEqual(errs, [])
 
     def test_included_md(self):
-        val, errs = self.bundle.format("term-md-ref-md")
+        val, errs = self.markdown_escaping_bundle.format("term-md-ref-md")
         self.assertEqual(val, Markdown("**Jack** & __Jill__ are **great!**"))
         self.assertEqual(errs, [])
 
     def test_included_plain(self):
-        val, errs = self.bundle.format("term-plain-ref-md")
+        val, errs = self.markdown_escaping_bundle.format("term-plain-ref-md")
         self.assertEqual(val, Markdown("Jack & Jill are **great!**"))
         self.assertEqual(errs, [])
 
     def test_compound_message(self):
-        val, errs = self.bundle.format("compound-message-md", {"arg": "**Jack & Jill**"})
+        val, errs = self.markdown_escaping_bundle.format("compound-message-md", {"arg": "**Jack & Jill**"})
         self.assertEqual(
             val,
             Markdown("A message about Jack & Jill. " "This **thing** is called Jack & Jill."),
@@ -410,59 +409,59 @@ class TestMarkdownEscaping(unittest.TestCase):
         self.assertEqual(errs, [])
 
     def test_function(self):
-        val, errs = self.bundle.format("function-md", {"text": "Jack & Jill"})
+        val, errs = self.markdown_escaping_bundle.format("function-md", {"text": "Jack & Jill"})
         self.assertEqual(val, Markdown("You said: \n> Jack & Jill"))
         self.assertEqual(errs, [])
 
     def test_plain_parent(self):
-        val, errs = self.bundle.format("parent-plain")
+        val, errs = self.markdown_escaping_bundle.format("parent-plain")
         self.assertEqual(val, "Some stuff")
         self.assertEqual(errs, [])
 
     def test_md_attribute(self):
-        val, errs = self.bundle.format("parent-plain.attr-md")
+        val, errs = self.markdown_escaping_bundle.format("parent-plain.attr-md")
         self.assertEqual(val, Markdown("Some **Markdown** stuff"))
         self.assertEqual(errs, [])
 
     def test_md_message_reference_from_plain(self):
-        val, errs = self.bundle.format("references-md-message-plain")
+        val, errs = self.markdown_escaping_bundle.format("references-md-message-plain")
         self.assertEqual(val, "Plain. simple-md")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_attr_reference_from_plain(self):
-        val, errs = self.bundle.format("references-md-attr-plain")
+        val, errs = self.markdown_escaping_bundle.format("references-md-attr-plain")
         self.assertEqual(val, "Plain. parent-plain.attr-md")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_reference_from_md(self):
-        val, errs = self.bundle.format("references-md-attr-md")
+        val, errs = self.markdown_escaping_bundle.format("references-md-attr-md")
         self.assertEqual(val, Markdown("**Markdown**. Some **Markdown** stuff"))
         self.assertEqual(errs, [])
 
     def test_plain_reference_from_md(self):
-        val, errs = self.bundle.format("references-plain-attr-md")
+        val, errs = self.markdown_escaping_bundle.format("references-plain-attr-md")
         self.assertEqual(val, Markdown("**Markdown**. This and That"))
         self.assertEqual(errs, [])
 
     def test_md_variant_from_plain(self):
-        val, errs = self.bundle.format("references-md-variant-plain")
+        val, errs = self.markdown_escaping_bundle.format("references-md-variant-plain")
         self.assertEqual(val, "-brand-md is cool")
         self.assertEqual(len(errs), 1)
         self.assertEqual(type(errs[0]), TypeError)
 
     def test_md_variant_from_md(self):
-        val, errs = self.bundle.format("references-md-variant-md")
+        val, errs = self.markdown_escaping_bundle.format("references-md-variant-md")
         self.assertEqual(val, Markdown("CoolBrand **2** is cool"))
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_plain(self):
-        val, errs = self.bundle.format("references-plain-variant-plain")
+        val, errs = self.markdown_escaping_bundle.format("references-plain-variant-plain")
         self.assertEqual(val, "*A&B* is awesome")
         self.assertEqual(errs, [])
 
     def test_plain_variant_from_md(self):
-        val, errs = self.bundle.format("references-plain-variant-md")
+        val, errs = self.markdown_escaping_bundle.format("references-plain-variant-md")
         self.assertEqual(val, Markdown("A&B is awesome"))
         self.assertEqual(errs, [])
