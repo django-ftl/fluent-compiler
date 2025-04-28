@@ -459,6 +459,7 @@ def compile_message(
         )
     else:
         return_expression = compile_expr(msg, function_block, compiler_env)
+        assert isinstance(return_expression, codegen.Expression), f"Expected Expression, got {return_expression}"
     # > return $return_expression
     msg_func.add_return(return_expression)
     return msg_func
