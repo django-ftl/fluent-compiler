@@ -339,7 +339,7 @@ class TestCodeGen(unittest.TestCase):
     def test_method_call_bad_name(self):
         scope = codegen.Module()
         s = codegen.String("x")
-        method_call = codegen.MethodCall(s, "bad method name", [], scope)
+        method_call = codegen.MethodCall(s, "bad method name", [])
         self.assertRaises(AssertionError, as_source_code, method_call)
 
     def test_try_catch(self):

@@ -213,7 +213,6 @@ class RegisteredEscaper:
 class EscaperJoin(codegen.StringJoinBase):
     def __init__(self, parts: Sequence[Expression], escaper: RegisteredEscaper, scope: codegen.Scope):
         super().__init__(parts)
-        self.type = escaper.output_type
         self.escaper = escaper
         self.scope = scope
 
@@ -226,7 +225,6 @@ class EscaperJoin(codegen.StringJoinBase):
                 [codegen.List(self.parts)],
                 {},
                 self.scope,
-                expr_type=self.type,
             ).as_ast()
 
     @classmethod

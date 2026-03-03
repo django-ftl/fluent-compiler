@@ -122,10 +122,55 @@ class CompilerEnvironment:
     functions_arg_spec: dict[str, FunctionArgSpec] = field(default_factory=dict)
     message_ids_to_ast: dict[str, fl_ast.Message | fl_ast.Attribute] = field(default_factory=dict)
     term_ids_to_ast: dict[str, fl_ast.Term | fl_ast.Attribute] = field(default_factory=dict)
+    type_map: codegen.ExprTypeMap = field(default_factory=codegen.ExprTypeMap)
 
     def add_current_message_error(self, error: Exception):
         message_id = self.current.message_id if self.current else None
         self.errors.append((message_id, error))
+
+    def get_expr_type(self, expr: codegen.Expression) -> type:
+        """Look up the type of an expression."""
+        return codegen.get_expr_type(expr, self.type_map)
+
+    def set_expr_type(self, expr: codegen.Expression, expr_type: type) -> None:
+        """Register the type of an expression in the type map."""
+        self.type_map.set(expr, expr_type)
+
+    def typed_variable(
+        self, name: str, scope: codegen.Scope
+    ) -> codegen.VariableReference:
+        """
+        Create a VariableReference and register its type from scope properties.
+        """
+        var = scope.variable(name)
+        looked_up_type = scope.get_name_properties(name).get(codegen.PROPERTY_TYPE, codegen.UNKNOWN_TYPE)
+        assert isinstance(looked_up_type, type)
+        if looked_up_type is not codegen.UNKNOWN_TYPE:
+            self.type_map.set(var, looked_up_type)
+        return var
+
+    def typed_function_call(
+        self,
+        function_name: str,
+        args: Sequence[codegen.Expression],
+        kwargs: dict[str, codegen.Expression],
+        scope: codegen.Scope,
+        expr_type: type = codegen.UNKNOWN_TYPE,
+    ) -> codegen.FunctionCall:
+        """
+        Create a FunctionCall and register its type.
+        If expr_type is UNKNOWN_TYPE, tries to resolve from scope properties.
+        """
+        fc = codegen.FunctionCall(function_name, args, kwargs, scope)
+        if expr_type is codegen.UNKNOWN_TYPE:
+            looked_up = scope.get_name_properties(function_name).get(
+                codegen.PROPERTY_RETURN_TYPE, codegen.UNKNOWN_TYPE
+            )
+            assert isinstance(looked_up, type)
+            expr_type = looked_up
+        if expr_type is not codegen.UNKNOWN_TYPE:
+            self.type_map.set(fc, expr_type)
+        return fc
 
     def escaper_for_message(self, message_id: str | None = None) -> RegisteredEscaper | NullEscaper:
         return escaper_for_message(self.escapers, message_id=message_id)
@@ -461,7 +506,7 @@ def compile_message(
         add_static_msg_error(function_block, error)
         compiler_env.add_current_message_error(error)
         return_expression = finalize_expr_as_output_type(
-            make_fluent_none(None, module.scope), function_block, compiler_env
+            make_fluent_none(None, module.scope, compiler_env), function_block, compiler_env
         )
     else:
         return_expression = compile_expr(msg, function_block, compiler_env)
@@ -747,11 +792,15 @@ def compile_expr_pattern(
             parts.append(wrap_with_escaper(codegen.String(PDI), block, compiler_env))
 
     # > f'$[p for p in parts]'
-    return EscaperJoin.build_with_escaper(
+    escaper = compiler_env.current.escaper
+    result = EscaperJoin.build_with_escaper(
         [finalize_expr_as_output_type(p, block, compiler_env) for p in parts],
-        compiler_env.current.escaper,
+        escaper,
         block.scope,
     )
+    if isinstance(result, codegen.Expression) and isinstance(escaper, RegisteredEscaper):
+        compiler_env.set_expr_type(result, escaper.output_type)
+    return result
 
 
 @compile_expr.register(fl_ast.TextElement)
@@ -774,7 +823,7 @@ def compile_expr_number_expression(
 ) -> codegen.FunctionCall:
     number_expr = codegen.Number(numeric_to_native(expr.value))
     # > NUMBER($number_expr)
-    return codegen.FunctionCall(BUILTIN_NUMBER, [number_expr], {}, block.scope)
+    return compiler_env.typed_function_call(BUILTIN_NUMBER, [number_expr], {}, block.scope)
 
 
 @compile_expr.register(fl_ast.Placeable)
@@ -807,7 +856,7 @@ def compile_term(
         )
         add_static_msg_error(block, error)
         compiler_env.add_current_message_error(error)
-        return make_fluent_none(term_id, block.scope)
+        return make_fluent_none(term_id, block.scope, compiler_env)
     else:
         with compiler_env.modified(escaper=new_escaper):
             with compiler_env.modified_for_term_reference(term_args=term_args):
@@ -863,7 +912,7 @@ def compile_expr_select_expression(
         if plural_form_tmp_name is not None:
             return plural_form_tmp_name
 
-        plural_form_value = codegen.FunctionCall(
+        plural_form_value = compiler_env.typed_function_call(
             PLURAL_FORM_FOR_NUMBER_NAME,
             [block.scope.variable(key_tmp_name)],
             {},
@@ -911,7 +960,7 @@ def compile_expr_select_expression(
         assert isinstance(assigned_value, codegen.Expression)
         cur_block.add_assignment(return_tmp_name, assigned_value, allow_multiple=not first)
         first = False
-        assigned_types.append(assigned_value.type)
+        assigned_types.append(compiler_env.get_expr_type(assigned_value))
 
     if assigned_types:
         first_type = assigned_types[0]
@@ -919,7 +968,7 @@ def compile_expr_select_expression(
             block.scope.set_name_properties(return_tmp_name, {codegen.PROPERTY_TYPE: first_type})
 
     block.add_statement(if_statement.finalize())
-    return block.scope.variable(return_tmp_name)
+    return compiler_env.typed_variable(return_tmp_name, block.scope)
 
 
 @compile_expr.register(fl_ast.Identifier)
@@ -940,7 +989,7 @@ def compile_expr_variable_reference(
         # external args.
         if name in compiler_env.current.term_args:
             return compiler_env.current.term_args[name]
-        return make_fluent_none(name, block.scope)
+        return make_fluent_none(name, block.scope, compiler_env)
 
     # Otherwise we are in a message, lookup at runtime.
 
@@ -1023,7 +1072,7 @@ def compile_expr_variable_reference(
         FluentReferenceError(f"{display_ast_location(argument, compiler_env)}: Unknown external: {name}"),
     )
     # > $arg_tmp_name = FluentNone("$name")
-    try_except.except_block.add_assignment(arg_tmp_name, make_fluent_none(name, block.scope), allow_multiple=True)
+    try_except.except_block.add_assignment(arg_tmp_name, make_fluent_none(name, block.scope, compiler_env), allow_multiple=True)
 
     if not wrap_with_handle_argument:
         return block.scope.variable(arg_tmp_name)
@@ -1066,13 +1115,15 @@ def compile_expr_function_reference(
 
         if match:
             function_name_in_module = compiler_env.function_renames[function_name]
-            return codegen.FunctionCall(function_name_in_module, sanitized_args, sanitized_kwargs, block.scope)
-        return make_fluent_none(function_name + "()", block.scope)
+            return compiler_env.typed_function_call(
+                function_name_in_module, sanitized_args, sanitized_kwargs, block.scope
+            )
+        return make_fluent_none(function_name + "()", block.scope, compiler_env)
 
     error = FluentReferenceError(f"Unknown function: {function_name}")
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
-    return make_fluent_none(function_name + "()", block.scope)
+    return make_fluent_none(function_name + "()", block.scope, compiler_env)
 
     # if isinstance(expr.callee, (TermReference, AttributeExpression)):
     #     if args:
@@ -1123,7 +1174,7 @@ def do_message_call(msg_id: str, block: codegen.Block, compiler_env: CompilerEnv
         )
         add_static_msg_error(block, error)
         compiler_env.add_current_message_error(error)
-        return make_fluent_none(msg_id, block.scope)
+        return make_fluent_none(msg_id, block.scope, compiler_env)
 
     msg_func_name = compiler_env.message_mapping[msg_id]
     if compiler_env.current.term_args is not None:
@@ -1136,7 +1187,7 @@ def do_message_call(msg_id: str, block: codegen.Block, compiler_env: CompilerEnv
     else:
         call_args = [block.scope.variable(a) for a in MESSAGE_FUNCTION_ARGS]
 
-    func_call = codegen.FunctionCall(msg_func_name, call_args, {}, block.scope)
+    func_call = compiler_env.typed_function_call(msg_func_name, call_args, {}, block.scope)
     return wrap_with_escaper(func_call, block, compiler_env)
 
 
@@ -1150,25 +1201,27 @@ def finalize_expr_as_output_type(
     a string (or the correct output type for the escaper)
     """
     escaper = compiler_env.current.escaper
-    if codegen_ast.type is escaper.output_type:
+    expr_type = compiler_env.get_expr_type(codegen_ast)
+    if expr_type is escaper.output_type:
         return codegen_ast
-    if issubclass(codegen_ast.type, str):
+    if issubclass(expr_type, str):
         return wrap_with_escaper(codegen_ast, block, compiler_env)
-    if issubclass(codegen_ast.type, FluentType):
+    if issubclass(expr_type, FluentType):
         # > $escaper.escape($codegen_ast.format(locale))
+        format_call = codegen.MethodCall(
+            codegen_ast,
+            "format",
+            [block.scope.variable(LOCALE_NAME)],
+        )
+        compiler_env.set_expr_type(format_call, str)
         return wrap_with_escaper(
-            codegen.MethodCall(
-                codegen_ast,
-                "format",
-                [block.scope.variable(LOCALE_NAME)],
-                expr_type=str,
-            ),
+            format_call,
             block,
             compiler_env,
         )
     if isinstance(escaper, NullEscaper):
         # > handle_output($python_expr, locale, errors)
-        return codegen.FunctionCall(
+        return compiler_env.typed_function_call(
             "handle_output",
             [
                 codegen_ast,
@@ -1181,7 +1234,7 @@ def finalize_expr_as_output_type(
         )
 
     # > handle_output_with_escaper($codegen_ast, $escaper.output_type, $escaper.escape, locale, errors)
-    return codegen.FunctionCall(
+    return compiler_env.typed_function_call(
         "handle_output_with_escaper",
         [
             codegen_ast,
@@ -1256,11 +1309,14 @@ def handle_message_reference(
     return unknown_reference(msg_id, block, ref, compiler_env)
 
 
-def make_fluent_none(name: str | None, scope: codegen.Scope) -> codegen.ObjectCreation:
+def make_fluent_none(name: str | None, scope: codegen.Scope, compiler_env: CompilerEnvironment | None = None) -> codegen.ObjectCreation:
     # > FluentNone(name)
     # OR
     # > FluentNone()
-    return codegen.ObjectCreation("FluentNone", [codegen.String(name)] if name else [], {}, scope)
+    expr = codegen.ObjectCreation("FluentNone", [codegen.String(name)] if name else [], {}, scope)
+    if compiler_env is not None:
+        compiler_env.set_expr_type(expr, FluentNone)
+    return expr
 
 
 def numeric_to_native(val: str) -> float | int:
@@ -1355,7 +1411,7 @@ def unknown_reference(
     error = unknown_reference_error_obj(name, ast_node, compiler_env)
     add_static_msg_error(block, error)
     compiler_env.add_current_message_error(error)
-    return make_fluent_none(name, block.scope)
+    return make_fluent_none(name, block.scope, compiler_env)
 
 
 def display_ast_location(ast_node: fl_ast.SyntaxNode, compiler_env: CompilerEnvironment) -> str:
@@ -1381,9 +1437,11 @@ def wrap_with_escaper(
     escaper = compiler_env.current.escaper
     if isinstance(escaper, NullEscaper) or escaper.escape is identity:
         return codegen_ast
-    if escaper.output_type is codegen_ast.type:
+    if escaper.output_type is compiler_env.get_expr_type(codegen_ast):
         return codegen_ast
-    return codegen.FunctionCall(escaper.escape_name(), [codegen_ast], {}, block.scope)
+    return compiler_env.typed_function_call(
+        escaper.escape_name(), [codegen_ast], {}, block.scope
+    )
 
 
 def wrap_with_mark_escaped(
@@ -1392,9 +1450,11 @@ def wrap_with_mark_escaped(
     escaper = compiler_env.current.escaper
     if isinstance(escaper, NullEscaper) or escaper.mark_escaped is identity:
         return codegen_ast
-    if escaper.output_type is codegen_ast.type:
+    if escaper.output_type is compiler_env.get_expr_type(codegen_ast):
         return codegen_ast
-    return codegen.FunctionCall(escaper.mark_escaped_name(), [codegen_ast], {}, block.scope)
+    return compiler_env.typed_function_call(
+        escaper.mark_escaped_name(), [codegen_ast], {}, block.scope
+    )
 
 
 # AST checking and simplification
