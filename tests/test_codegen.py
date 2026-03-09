@@ -339,7 +339,7 @@ class TestCodeGen(unittest.TestCase):
     def test_method_call_bad_name(self):
         scope = codegen.Module()
         s = codegen.String("x")
-        method_call = codegen.MethodCall(s, "bad method name", [], scope)
+        method_call = codegen.MethodCall(s, "bad method name", [])
         self.assertRaises(AssertionError, as_source_code, method_call)
 
     def test_try_catch(self):
@@ -559,3 +559,115 @@ class TestCodeGen(unittest.TestCase):
     def test_or(self):
         or_ = codegen.Or(codegen.String("x"), codegen.String("y"))
         self.assertCodeEqual(as_source_code(or_), "'x' or 'y'")
+
+
+class TestGetExprType(unittest.TestCase):
+    """Tests for codegen.get_expr_type and ExprTypeMap."""
+
+    # -- Intrinsic types --
+
+    def test_string(self):
+        self.assertIs(codegen.get_expr_type(codegen.String("hello")), str)
+
+    def test_number_int(self):
+        self.assertIs(codegen.get_expr_type(codegen.Number(42)), int)
+
+    def test_number_float(self):
+        self.assertIs(codegen.get_expr_type(codegen.Number(3.14)), float)
+
+    def test_list(self):
+        self.assertIs(codegen.get_expr_type(codegen.List([])), list)
+
+    def test_dict(self):
+        self.assertIs(codegen.get_expr_type(codegen.Dict([])), dict)
+
+    def test_none_expr(self):
+        self.assertIs(codegen.get_expr_type(codegen.NoneExpr()), type(None))
+
+    def test_equals(self):
+        self.assertIs(codegen.get_expr_type(codegen.Equals(codegen.String("a"), codegen.String("b"))), bool)
+
+    def test_or(self):
+        self.assertIs(codegen.get_expr_type(codegen.Or(codegen.String("a"), codegen.String("b"))), bool)
+
+    def test_fstring_join(self):
+        self.assertIs(codegen.get_expr_type(codegen.FStringJoin([codegen.String("a")])), str)
+
+    def test_concat_join(self):
+        self.assertIs(codegen.get_expr_type(codegen.ConcatJoin([codegen.String("a")])), str)
+
+    # -- Unknown types (no type map) --
+
+    def test_variable_reference_unknown(self):
+        scope = codegen.Scope()
+        scope.reserve_name("x")
+        self.assertIs(codegen.get_expr_type(scope.variable("x")), codegen.UNKNOWN_TYPE)
+
+    def test_function_call_unknown(self):
+        scope = codegen.Scope()
+        scope.reserve_name("f")
+        self.assertIs(codegen.get_expr_type(codegen.FunctionCall("f", [], {}, scope)), codegen.UNKNOWN_TYPE)
+
+    def test_method_call_unknown(self):
+        self.assertIs(codegen.get_expr_type(codegen.MethodCall(codegen.String("x"), "m", [])), codegen.UNKNOWN_TYPE)
+
+    def test_dict_lookup_unknown(self):
+        scope = codegen.Scope()
+        scope.reserve_name("d")
+        dl = codegen.DictLookup(scope.variable("d"), codegen.String("k"))
+        self.assertIs(codegen.get_expr_type(dl), codegen.UNKNOWN_TYPE)
+
+    # -- ExprTypeMap --
+
+    def test_type_map_overrides_intrinsic(self):
+        s = codegen.String("hello")
+        tm = codegen.ExprTypeMap()
+        tm.set(s, int)
+        self.assertIs(codegen.get_expr_type(s, tm), int)
+
+    def test_type_map_no_match_falls_through(self):
+        s = codegen.String("hello")
+        tm = codegen.ExprTypeMap()
+        # Don't register s
+        self.assertIs(codegen.get_expr_type(s, tm), str)
+
+    def test_type_map_for_variable_reference(self):
+        scope = codegen.Scope()
+        scope.reserve_name("x")
+        var = scope.variable("x")
+        tm = codegen.ExprTypeMap()
+        tm.set(var, str)
+        self.assertIs(codegen.get_expr_type(var, tm), str)
+
+    def test_type_map_for_function_call(self):
+        scope = codegen.Scope()
+        scope.reserve_name("f")
+        fc = codegen.FunctionCall("f", [], {}, scope)
+        tm = codegen.ExprTypeMap()
+        tm.set(fc, float)
+        self.assertIs(codegen.get_expr_type(fc, tm), float)
+
+    def test_type_map_for_method_call(self):
+        mc = codegen.MethodCall(codegen.String("x"), "m", [])
+        tm = codegen.ExprTypeMap()
+        tm.set(mc, str)
+        self.assertIs(codegen.get_expr_type(mc, tm), str)
+
+    def test_type_map_for_dict_lookup(self):
+        scope = codegen.Scope()
+        scope.reserve_name("d")
+        dl = codegen.DictLookup(scope.variable("d"), codegen.String("k"))
+        tm = codegen.ExprTypeMap()
+        tm.set(dl, int)
+        self.assertIs(codegen.get_expr_type(dl, tm), int)
+
+    def test_type_map_different_instances_independent(self):
+        """Two instances of the same class have independent types."""
+        scope = codegen.Scope()
+        scope.reserve_name("f")
+        fc1 = codegen.FunctionCall("f", [], {}, scope)
+        fc2 = codegen.FunctionCall("f", [], {}, scope)
+        tm = codegen.ExprTypeMap()
+        tm.set(fc1, str)
+        self.assertIs(codegen.get_expr_type(fc1, tm), str)
+        self.assertIs(codegen.get_expr_type(fc2, tm), codegen.UNKNOWN_TYPE)

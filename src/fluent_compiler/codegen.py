@@ -561,10 +561,6 @@ class Try(Statement):
 
 
 class Expression(CodeGenAst):
-    # type represents the Python type this expression will produce,
-    # if we know it (UNKNOWN_TYPE otherwise).
-    type: type = UNKNOWN_TYPE
-
     @abstractmethod
     def as_ast(self) -> py_ast.expr:
         raise NotImplementedError()
@@ -572,8 +568,6 @@ class Expression(CodeGenAst):
 
 class String(Expression):
     child_elements = []
-
-    type = str
 
     def __init__(self, string_value: str):
         self.string_value = string_value
@@ -597,7 +591,6 @@ class Number(Expression):
 
     def __init__(self, number: int | float | decimal.Decimal):
         self.number = number
-        self.type = type(number)
 
     def as_ast(self) -> py_ast.expr:
         return py_ast.Constant(self.number, **DEFAULT_AST_ARGS)
@@ -611,7 +604,6 @@ class List(Expression):
 
     def __init__(self, items):
         self.items = items
-        self.type = list
 
     def as_ast(self) -> py_ast.expr:
         return py_ast.List(elts=[i.as_ast() for i in self.items], ctx=py_ast.Load(), **DEFAULT_AST_ARGS)
@@ -622,7 +614,6 @@ class Dict(Expression):
 
     def __init__(self, pairs: Sequence[tuple[Expression, Expression]]):
         self.pairs = pairs
-        self.type = dict
 
     def as_ast(self) -> py_ast.expr:
         return py_ast.Dict(
@@ -634,8 +625,6 @@ class Dict(Expression):
 
 class StringJoinBase(Expression):
     child_elements = ["parts"]
-
-    type = str
 
     def __init__(self, parts: Sequence[Expression]):
         self.parts = parts
@@ -717,9 +706,6 @@ class VariableReference(Expression):
         if not scope.is_name_in_use(name):
             raise AssertionError(f"Cannot refer to undefined variable '{name}'")
         self.name = name
-        looked_up_type = scope.get_name_properties(name).get(PROPERTY_TYPE, UNKNOWN_TYPE)
-        assert isinstance(looked_up_type, type)
-        self.type = looked_up_type
 
     def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.name, allow_builtin=True):
@@ -742,19 +728,12 @@ class FunctionCall(Expression):
         args: Sequence[Expression],
         kwargs: dict[str, Expression],
         scope: Scope,
-        expr_type: type = UNKNOWN_TYPE,
     ):
         if not scope.is_name_in_use(function_name):
             raise AssertionError(f"Cannot call unknown function '{function_name}'")
         self.function_name = function_name
         self.args = list(args)
         self.kwargs = kwargs
-        if expr_type is UNKNOWN_TYPE:
-            # Try to find out automatically
-            looked_up_return_type = scope.get_name_properties(function_name).get(PROPERTY_RETURN_TYPE, expr_type)
-            assert isinstance(looked_up_return_type, type)
-            expr_type = looked_up_return_type
-        self.type = expr_type
 
     def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.function_name, allow_builtin=True):
@@ -818,12 +797,11 @@ class FunctionCall(Expression):
 class MethodCall(Expression):
     child_elements = ["obj", "args"]
 
-    def __init__(self, obj: Expression, method_name: str, args: Sequence[Expression], expr_type: type = UNKNOWN_TYPE):
+    def __init__(self, obj: Expression, method_name: str, args: Sequence[Expression]):
         # We can't check method_name because we don't know the type of obj yet.
         self.obj = obj
         self.method_name = method_name
         self.args = args
-        self.type = expr_type
 
     def as_ast(self) -> py_ast.expr:
         if not allowable_name(self.method_name, for_method=True):
@@ -847,10 +825,9 @@ class MethodCall(Expression):
 class DictLookup(Expression):
     child_elements = ["lookup_obj", "lookup_arg"]
 
-    def __init__(self, lookup_obj: Expression, lookup_arg: Expression, expr_type: type = UNKNOWN_TYPE):
+    def __init__(self, lookup_obj: Expression, lookup_arg: Expression):
         self.lookup_obj = lookup_obj
         self.lookup_arg = lookup_arg
-        self.type = expr_type
 
     def as_ast(self) -> py_ast.expr:
         return py_ast.Subscript(
@@ -865,8 +842,6 @@ ObjectCreation = FunctionCall
 
 
 class NoneExpr(Expression):
-    type = type(None)
-
     def as_ast(self) -> py_ast.expr:
         return py_ast.Constant(value=None, **DEFAULT_AST_ARGS)
 
@@ -880,8 +855,6 @@ class BinaryOperator(Expression):
 
 
 class Equals(BinaryOperator):
-    type = bool
-
     def as_ast(self) -> py_ast.expr:
         return py_ast.Compare(
             left=self.left.as_ast(),
@@ -892,7 +865,6 @@ class Equals(BinaryOperator):
 
 
 class BoolOp(BinaryOperator):
-    type = bool
     op = NotImplemented
 
     def as_ast(self) -> py_ast.expr:
@@ -965,3 +937,74 @@ def empty_If() -> py_ast.If:
     must be added later.
     """
     return py_ast.If(test=None, orelse=[], **DEFAULT_AST_ARGS)  # type: ignore[reportArgumentType]
+
+
+# --- External type tracking ---
+#
+# The Python type an Expression will produce at runtime is tracked externally,
+# not on the Expression objects themselves. This keeps codegen nodes as pure
+# syntax objects, free of compiler-level semantic information.
+#
+# Types are determined by:
+#   1. Intrinsic inference from the Expression subclass (e.g. String -> str)
+#   2. An ExprTypeMap populated by the compiler for context-dependent types
+
+
+class ExprTypeMap:
+    """
+    Maps Expression instances to the Python type they will produce at runtime.
+
+    Used by the compiler to track types for expressions where the type
+    cannot be inferred from the Expression subclass alone (e.g. FunctionCall,
+    VariableReference).
+    """
+
+    def __init__(self) -> None:
+        self._map: dict[int, type] = {}
+
+    def set(self, expr: Expression, expr_type: type) -> None:
+        self._map[id(expr)] = expr_type
+
+    def get(self, expr: Expression) -> type | None:
+        return self._map.get(id(expr))
+
+
+# Intrinsic type mapping: Expression subclass -> known Python type.
+_INTRINSIC_TYPES: dict[type, type] = {
+    String: str,
+    FStringJoin: str,
+    ConcatJoin: str,
+    NoneExpr: type(None),
+    Equals: bool,
+    Or: bool,
+    List: list,
+    Dict: dict,
+}
+
+
+def get_expr_type(expr: Expression, type_map: ExprTypeMap | None = None) -> type:
+    """
+    Determine the Python type an Expression will produce.
+
+    Checks in order:
+    1. The ExprTypeMap (explicit compiler-assigned types)
+    2. Intrinsic types (derivable from the Expression subclass)
+    3. Falls back to UNKNOWN_TYPE
+    """
+    # 1. Check explicit type map
+    if type_map is not None:
+        mapped = type_map.get(expr)
+        if mapped is not None:
+            return mapped
+
+    # 2. Check intrinsic types (exact class match)
+    intrinsic = _INTRINSIC_TYPES.get(type(expr))
+    if intrinsic is not None:
+        return intrinsic
+
+    # 3. Special case: Number's type depends on its literal value
+    if isinstance(expr, Number):
+        return type(expr.number)
+
+    # 4. Fallback
+    return UNKNOWN_TYPE
